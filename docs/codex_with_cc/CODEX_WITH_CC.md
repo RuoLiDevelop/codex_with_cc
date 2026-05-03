@@ -58,7 +58,7 @@ Run this only inside a Codex child thread:
 ```powershell
 $env:CODEX_CLAUDE_CHILD_THREAD = '1'
 pwsh -NoProfile -File .\docs\codex_with_cc\scripts\delegate_to_claude.ps1 `
-  -TaskFile .\docs\codex_with_cc\tasks\<task-file>.md `
+  -TaskFile .\.codex\codex_with_cc\tasks\<task-file>.md `
   -SessionMode PrimaryReuse `
   -SessionKey <stable-session-key> `
   -BypassPermissions

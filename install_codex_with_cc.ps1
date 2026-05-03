@@ -33,6 +33,7 @@ function Update-AgentEntrypoint {
   $block = @(
     $begin
     'Codex with Claude Code workflow: before using this workflow, read `docs/codex_with_cc/CODEX_WITH_CC.md`.'
+    'If the task involves child agents, subagents, delegation, or any worker-execution step, you must read that file first and follow the custom `Codex main thread -> Codex child agent -> delegate_to_claude.* -> Claude Code CLI` workflow defined there.'
     $end
   ) -join [Environment]::NewLine
 
@@ -46,6 +47,31 @@ function Update-AgentEntrypoint {
     }
   } else {
     $updated = $block + [Environment]::NewLine
+  }
+
+  [System.IO.File]::WriteAllText($Path, $updated, (New-Object System.Text.UTF8Encoding($false)))
+}
+
+function Update-GitIgnore {
+  param(
+    [Parameter(Mandatory = $true)][string]$Path
+  )
+
+  $entry = '.codex/'
+  if (Test-Path -LiteralPath $Path) {
+    $text = Get-Content -LiteralPath $Path -Raw
+    $lines = @($text -split "\r?\n")
+    if ($lines -contains $entry) {
+      return
+    }
+
+    $updated = $text.TrimEnd()
+    if ($updated.Length -gt 0) {
+      $updated += [Environment]::NewLine
+    }
+    $updated += $entry + [Environment]::NewLine
+  } else {
+    $updated = $entry + [Environment]::NewLine
   }
 
   [System.IO.File]::WriteAllText($Path, $updated, (New-Object System.Text.UTF8Encoding($false)))
@@ -65,6 +91,8 @@ $resolvedTargetRoot = (Resolve-Path -LiteralPath $resolvedTargetRoot).Path
 
 $docsRoot = Join-Path $resolvedTargetRoot 'docs'
 $workflowRoot = Join-Path $docsRoot 'codex_with_cc'
+$codexRoot = Join-Path $resolvedTargetRoot '.codex'
+$taskRoot = Join-Path $codexRoot 'codex_with_cc\tasks'
 
 if (Test-Path -LiteralPath $workflowRoot) {
   if (-not (Test-PathInside -Child $workflowRoot -Parent $resolvedTargetRoot)) {
@@ -75,7 +103,12 @@ if (Test-Path -LiteralPath $workflowRoot) {
 
 New-Item -ItemType Directory -Path $docsRoot -Force | Out-Null
 Copy-Item -LiteralPath $sourceWorkflowRoot -Destination $workflowRoot -Recurse -Force
-New-Item -ItemType Directory -Path (Join-Path $workflowRoot 'tasks') -Force | Out-Null
+New-Item -ItemType Directory -Path $taskRoot -Force | Out-Null
+$taskGitkeepPath = Join-Path $taskRoot '.gitkeep'
+if (Test-Path -LiteralPath $taskGitkeepPath) {
+  Remove-Item -LiteralPath $taskGitkeepPath -Force
+}
+Update-GitIgnore -Path (Join-Path $resolvedTargetRoot '.gitignore')
 
 if (-not $SkipAgentEntrypoints) {
   foreach ($entryName in @('AGENTS.md')) {

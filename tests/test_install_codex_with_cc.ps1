@@ -66,6 +66,7 @@ Keep this project-specific rule.
   }
 
   $workflowRoot = Join-Path $targetRoot 'docs\codex_with_cc'
+  $taskRoot = Join-Path $targetRoot '.codex\codex_with_cc\tasks'
   Assert-True -Condition (Test-Path -LiteralPath $workflowRoot) -Name 'workflow-root-created'
   Assert-True -Condition (Test-Path -LiteralPath (Join-Path $workflowRoot 'CODEX_WITH_CC.md')) -Name 'codex-with-cc-entry-created'
   Assert-True -Condition (-not (Test-Path -LiteralPath (Join-Path $workflowRoot 'CLAUDE_CODE_DELEGATION.md'))) -Name 'delegation-doc-not-created'
@@ -73,16 +74,20 @@ Keep this project-specific rule.
   Assert-True -Condition (-not (Test-Path -LiteralPath (Join-Path $workflowRoot 'PROJECT_MEMORY.md'))) -Name 'project-memory-not-created'
   Assert-True -Condition (Test-Path -LiteralPath (Join-Path $workflowRoot 'scripts\delegate_to_claude.ps1')) -Name 'delegate-script-created'
   Assert-True -Condition (Test-Path -LiteralPath (Join-Path $workflowRoot 'scripts\verify_delegate_chain.ps1')) -Name 'chain-verifier-created'
-  Assert-True -Condition (Test-Path -LiteralPath (Join-Path $workflowRoot 'tasks')) -Name 'tasks-dir-created'
-  Assert-True -Condition (-not (Test-Path -LiteralPath (Join-Path $workflowRoot 'tasks\.gitkeep'))) -Name 'tasks-gitkeep-not-created'
+  Assert-True -Condition (Test-Path -LiteralPath $taskRoot) -Name 'tasks-dir-created-under-codex-root'
+  Assert-True -Condition (-not (Test-Path -LiteralPath (Join-Path $taskRoot '.gitkeep'))) -Name 'tasks-gitkeep-not-created'
   Assert-True -Condition (-not (Test-Path -LiteralPath (Join-Path $targetRoot 'docs\ai'))) -Name 'legacy-docs-ai-not-created'
   Assert-True -Condition (-not (Test-Path -LiteralPath (Join-Path $targetRoot 'docs\scripts\ai'))) -Name 'legacy-docs-scripts-ai-not-created'
+  $gitIgnoreText = Get-Content -LiteralPath (Join-Path $targetRoot '.gitignore') -Raw
+  Assert-Contains -Text $gitIgnoreText -Needle '.codex/' -Name 'gitignore-contains-codex-root'
 
   $agentsText = Get-Content -LiteralPath (Join-Path $targetRoot 'AGENTS.md') -Raw
   Assert-Contains -Text $agentsText -Needle 'Keep this project-specific rule.' -Name 'existing-agents-content-preserved'
   Assert-Contains -Text $agentsText -Needle '<!-- BEGIN CODEX_WITH_CC -->' -Name 'agents-managed-block-added'
   Assert-Contains -Text $agentsText -Needle 'docs/codex_with_cc/CODEX_WITH_CC.md' -Name 'agents-managed-block-points-to-central-entry'
   Assert-Contains -Text $agentsText -Needle '`docs/codex_with_cc/CODEX_WITH_CC.md`' -Name 'agents-managed-block-keeps-markdown-code-format'
+  Assert-Contains -Text $agentsText -Needle 'If the task involves child agents, subagents, delegation, or any worker-execution step, you must read that file first' -Name 'agents-managed-block-requires-reading-workflow-before-subagent-logic'
+  Assert-Contains -Text $agentsText -Needle 'Codex main thread -> Codex child agent -> delegate_to_claude.* -> Claude Code CLI' -Name 'agents-managed-block-points-to-custom-subagent-chain'
   Assert-True -Condition (-not (Test-Path -LiteralPath (Join-Path $targetRoot 'CLAUDE.md'))) -Name 'claude-entrypoint-not-created'
   Assert-True -Condition (-not (Test-Path -LiteralPath (Join-Path $targetRoot 'GEMINI.md'))) -Name 'gemini-entrypoint-not-created'
   Assert-Contains -Text ($installOutput -join [Environment]::NewLine) -Needle 'Agent entrypoints updated: AGENTS.md' -Name 'install-output-lists-only-agents'
@@ -101,8 +106,8 @@ Keep this project-specific rule.
   Set-Content -LiteralPath (Join-Path $workflowRoot 'obsolete.txt') -Value 'stale' -Encoding UTF8
   Set-Content -LiteralPath (Join-Path $workflowRoot 'HOST_PROJECT_RULES.md') -Value 'stale host rules' -Encoding UTF8
   Set-Content -LiteralPath (Join-Path $workflowRoot 'PROJECT_MEMORY.md') -Value 'stale project memory' -Encoding UTF8
-  New-Item -ItemType Directory -Path (Join-Path $workflowRoot 'tasks') -Force | Out-Null
-  Set-Content -LiteralPath (Join-Path $workflowRoot 'tasks\.gitkeep') -Value '' -Encoding UTF8
+  New-Item -ItemType Directory -Path $taskRoot -Force | Out-Null
+  Set-Content -LiteralPath (Join-Path $taskRoot '.gitkeep') -Value '' -Encoding UTF8
 
   $reinstallOutput = & pwsh -NoProfile -ExecutionPolicy Bypass -File $installerPath -TargetRoot $targetRoot 2>&1
   if ($LASTEXITCODE -ne 0) {
@@ -115,8 +120,8 @@ Keep this project-specific rule.
   Assert-True -Condition (-not (Test-Path -LiteralPath (Join-Path $workflowRoot 'obsolete.txt'))) -Name 'reinstall-removes-obsolete-file'
   Assert-True -Condition (-not (Test-Path -LiteralPath (Join-Path $workflowRoot 'HOST_PROJECT_RULES.md'))) -Name 'reinstall-removes-stale-host-rules'
   Assert-True -Condition (-not (Test-Path -LiteralPath (Join-Path $workflowRoot 'PROJECT_MEMORY.md'))) -Name 'reinstall-removes-stale-project-memory'
-  Assert-True -Condition (-not (Test-Path -LiteralPath (Join-Path $workflowRoot 'tasks\.gitkeep'))) -Name 'reinstall-removes-stale-gitkeep'
-  Assert-True -Condition (Test-Path -LiteralPath (Join-Path $workflowRoot 'tasks')) -Name 'reinstall-recreates-tasks-dir'
+  Assert-True -Condition (-not (Test-Path -LiteralPath (Join-Path $taskRoot '.gitkeep'))) -Name 'reinstall-removes-stale-gitkeep'
+  Assert-True -Condition (Test-Path -LiteralPath $taskRoot) -Name 'reinstall-recreates-tasks-dir'
 
   Write-Host 'install tests passed' -ForegroundColor Green
 } finally {
