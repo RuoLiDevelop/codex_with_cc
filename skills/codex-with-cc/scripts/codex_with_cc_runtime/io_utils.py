@@ -3,6 +3,7 @@ from __future__ import annotations
 import contextlib
 import json
 import os
+import time
 import uuid
 from pathlib import Path
 from typing import Any
@@ -29,7 +30,14 @@ def write_json(path: Path, data: dict[str, Any]) -> None:
     temp_path = path.parent / f".{path.name}.{uuid.uuid4().hex}.tmp"
     try:
         temp_path.write_text(payload, encoding="utf-8")
-        os.replace(temp_path, path)
+        for attempt in range(20):
+            try:
+                os.replace(temp_path, path)
+                break
+            except PermissionError:
+                if attempt == 19:
+                    raise
+                time.sleep(min(0.1 * (attempt + 1), 0.5))
     finally:
         with contextlib.suppress(FileNotFoundError):
             temp_path.unlink()

@@ -80,13 +80,14 @@ def new_claude_cli_args(
     resume: bool,
     max_budget_usd: str | None,
     bypass_permissions: bool,
-    prompt_text: str,
 ) -> list[str]:
     args = [
         "--verbose",
         "--print",
         "--output-format",
         "stream-json",
+        "--input-format",
+        "text",
         "--model",
         model,
         "--name",
@@ -99,7 +100,6 @@ def new_claude_cli_args(
         args.extend(["--max-budget-usd", str(max_budget_usd)])
     if bypass_permissions:
         args.append("--dangerously-skip-permissions")
-    args.append(prompt_text)
     return args
 
 

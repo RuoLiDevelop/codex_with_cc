@@ -80,6 +80,7 @@ def make_fake_claude_bin(root: Path) -> Path:
     result_record = json.dumps({"type": "result", "subtype": "success"}, separators=(",", ":"))
     (fake_bin / "claude.cmd").write_text(
         '@echo off\n'
+        'more > nul\n'
         f"echo {assistant_record}\n"
         f"echo {result_record}\n"
         "exit /b 0\n",

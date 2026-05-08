@@ -187,7 +187,7 @@ def run_test_runtime(_: argparse.Namespace) -> int:
         assert_equal(int(status["maxRetryCount"]), 7, "dry-run-status-records-max-retry")
 
         if os.name == "nt":
-            fake_body = '@echo off\necho {"type":"assistant","message":{"role":"assistant","content":[{"type":"text","text":"I inspected the tests."}]}}\necho {"type":"result","subtype":"success"}\nexit /b 0\n'
+            fake_body = '@echo off\nmore > nul\necho {"type":"assistant","message":{"role":"assistant","content":[{"type":"text","text":"I inspected the tests."}]}}\necho {"type":"result","subtype":"success"}\nexit /b 0\n'
         else:
             fake_body = '#!/bin/sh\necho \'{"type":"assistant","message":{"role":"assistant","content":[{"type":"text","text":"I inspected the tests."}]}}\'\necho \'{"type":"result","subtype":"success"}\'\nexit 0\n'
         fake_bin = make_fake_claude_bin(temp_root, fake_body)
@@ -252,6 +252,7 @@ def run_test_runtime(_: argparse.Namespace) -> int:
         if os.name == "nt":
             retry_fake_body = (
                 "@echo off\n"
+                "more > nul\n"
                 f'if exist "{retry_state}" goto structured\n'
                 f'echo seen>"{retry_state}"\n'
                 f"echo {unstructured_record}\n"

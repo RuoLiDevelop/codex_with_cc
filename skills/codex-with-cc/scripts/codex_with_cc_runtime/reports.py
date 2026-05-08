@@ -120,6 +120,9 @@ def build_report_repair_prompt(output_path: Path, previous_text: str) -> str:
 
 Do not make new edits unless you discover your previous work was incomplete. Do not ask what to do next.
 Use the completed work and verification from this same Claude session to write the final delegate report.
+Do not read any additional files, inspect any new artifacts, or call any tools.
+Do not infer new pending tasks, orchestration steps, or follow-up delegate runs from wrapper metadata.
+If the previous response is missing detail, state that limitation inside the required headings instead of gathering new information.
 
 Write the report to this path if you choose to write a file, and also return the report as your final response:
 {output_path}

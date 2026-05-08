@@ -336,7 +336,6 @@ def run_delegate(ns: argparse.Namespace) -> int:
                     lease.resume,
                     str(ns.max_budget_usd) if ns.max_budget_usd not in (None, "") else None,
                     bool(ns.bypass_permissions),
-                    prompt_text,
                 )
                 if attempt == 1:
                     config["initialSessionId"] = lease.session_id
@@ -358,6 +357,7 @@ def run_delegate(ns: argparse.Namespace) -> int:
 
                 process = subprocess.Popen(
                     [claude, *claude_args],
+                    stdin=subprocess.PIPE,
                     stdout=subprocess.PIPE,
                     stderr=subprocess.STDOUT,
                     text=True,
@@ -366,6 +366,11 @@ def run_delegate(ns: argparse.Namespace) -> int:
                     cwd=str(root),
                 )
                 assert process.stdout is not None
+                assert process.stdin is not None
+                process.stdin.write(prompt_text)
+                if not prompt_text.endswith("\n"):
+                    process.stdin.write("\n")
+                process.stdin.close()
                 for line in process.stdout:
                     line_text = line.rstrip("\r\n")
                     if not line_text.strip():
