@@ -17,12 +17,14 @@ def verify_artifacts(run_id: str, artifact_root_value: str | None) -> dict[str, 
     root = Path(artifact_root_value).resolve() if artifact_root_value else (repo_root() / ".codex" / "codex_with_cc" / "claude-delegate").resolve()
     config_path = root / f"config_{run_id}.json"
     status_path = root / f"status_{run_id}.json"
-    output_path = root / f"claude_{run_id}.md"
-    for label, path in (("config", config_path), ("status", status_path), ("output", output_path)):
+    for label, path in (("config", config_path), ("status", status_path)):
         if not path.exists():
             raise DelegateError(f"Missing delegate {label}: {path}")
     config = load_json(config_path)
     status = load_json(status_path)
+    output_path = Path(str(config.get("outputPath") or (root / f"claude_{run_id}.md"))).resolve()
+    if not output_path.exists():
+        raise DelegateError(f"Missing delegate output: {output_path}")
     for obj in (config, status):
         if "artifactSchema" not in obj or "invocationContract" not in obj:
             raise DelegateError("Legacy delegate artifact is unsupported; rerun with current spawn_agent-based flow.")

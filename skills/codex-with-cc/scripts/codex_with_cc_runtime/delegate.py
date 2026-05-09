@@ -49,6 +49,29 @@ Risks Or Follow-ups
 
 
 
+def dry_run_report(run_id: str, prompt_path: Path) -> str:
+    return f"""Process Log
+- Dry run enabled; Claude Code was not invoked.
+- Delegate prompt and audit artifacts were generated for inspection.
+
+Summary
+Delegate dry run completed without executing Claude Code.
+
+Changed Files
+None
+
+Verification
+- dry-run artifact generation completed for RunId {run_id}
+
+Final Result
+PASS
+
+Risks Or Follow-ups
+- Inspect the generated prompt before running without -DryRun if needed: {prompt_path}
+"""
+
+
+
 def complete_startup_failure(
     failure_message: str,
     config_path: Path,
@@ -281,8 +304,32 @@ def run_delegate(ns: argparse.Namespace) -> int:
 
         if ns.dry_run:
             print("Dry run enabled; Claude Code was not invoked.")
+            write_text(output_path, dry_run_report(run_id, prompt_path))
+            write_text(raw_stream_path, "")
+            write_text(trace_path, f"[dry-run] Claude Code was not invoked for run {run_id}\n")
+            status["attemptCount"] = 1
+            status["retryCount"] = 0
+            status["attempts"] = [
+                {
+                    "attempt": 1,
+                    "sessionId": lease.session_id,
+                    "resume": lease.resume,
+                    "retryReason": None,
+                    "exitCode": 0,
+                    "sawAssistantText": False,
+                    "sawResultSuccess": True,
+                    "capturedFinalResult": True,
+                    "dryRun": True,
+                }
+            ]
             status["status"] = "completed"
             status["exitCode"] = 0
+            status["outputBytes"] = output_path.stat().st_size
+            config["initialSessionId"] = lease.session_id
+            config["initialResume"] = lease.resume
+            config["attemptCount"] = 1
+            config["retryCount"] = 0
+            write_json(config_path, config)
             write_json(status_path, status)
             return 0
 

@@ -17,14 +17,36 @@ def test_final_result_heading(text: str | None) -> bool:
 
 
 def report_heading_match(text: str, heading: str) -> re.Match[str] | None:
-    pattern = rf"(?m)^\s*(?:#+\s*)?(?:\*\*)?{re.escape(heading)}(?:\*\*)?\s*$"
+    pattern = rf"(?m)^\s*{re.escape(heading)}\s*$"
     return re.search(pattern, text)
+
+
+
+def _text_outside_fenced_blocks(text: str) -> str:
+    lines: list[str] = []
+    in_fence = False
+    fence_marker = ""
+    for line in text.splitlines():
+        stripped = line.lstrip()
+        if stripped.startswith(("```", "~~~")):
+            marker = stripped[:3]
+            if not in_fence:
+                in_fence = True
+                fence_marker = marker
+            elif marker == fence_marker:
+                in_fence = False
+                fence_marker = ""
+            lines.append("")
+            continue
+        lines.append("" if in_fence else line)
+    return "\n".join(lines)
 
 
 
 def text_has_required_report_headings(text: str | None) -> bool:
     if not text or not text.strip():
         return False
+    text = _text_outside_fenced_blocks(text)
     positions: list[int] = []
     for heading in REPORT_HEADINGS:
         match = report_heading_match(text, heading)

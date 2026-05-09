@@ -58,13 +58,12 @@ def normalize_delegate_list(items: Iterable[str] | None) -> list[str]:
 
 
 def task_fingerprint(text: str, scope_items: list[str], test_items: list[str], task_mode: str) -> str:
-    prefix = text[:1000]
     raw = "\n".join(
         (
             f"mode={task_mode}",
             f"scope={'|'.join(sorted(scope_items))}",
             f"tests={'|'.join(sorted(test_items))}",
-            f"task={prefix}",
+            f"task={text}",
         )
     )
     return hashlib.sha256(raw.encode("utf-8")).hexdigest()

@@ -1,0 +1,154 @@
+#!/usr/bin/env python3
+import json
+import os
+import stat
+import subprocess
+import sys
+import tempfile
+from pathlib import Path
+
+
+REPO = Path(__file__).resolve().parents[1]
+SCRIPTS = REPO / "skills" / "codex-with-cc" / "scripts"
+DELEGATE = SCRIPTS / "delegate_to_claude.py"
+VERIFY_ARTIFACTS = SCRIPTS / "verify_delegate_artifacts.py"
+sys.path.insert(0, str(SCRIPTS))
+
+from codex_with_cc_runtime.reports import text_has_required_report_headings
+from codex_with_cc_runtime.sessions import task_fingerprint
+
+
+REPORT = "\n".join(
+    (
+        "Process Log",
+        "- fake delegate execution",
+        "",
+        "Summary",
+        "Fake Claude completed.",
+        "",
+        "Changed Files",
+        "None",
+        "",
+        "Verification",
+        "- fake verification passed",
+        "",
+        "Final Result",
+        "PASS",
+        "",
+        "Risks Or Follow-ups",
+        "None",
+    )
+)
+
+
+def run_id_from_output(output: str) -> str:
+    for line in output.splitlines():
+        if line.startswith("RunId:"):
+            return line.split(":", 1)[1].strip()
+    raise AssertionError(f"RunId line missing from output:\n{output}")
+
+
+def make_fake_claude_bin(root: Path) -> Path:
+    fake_bin = root / "fake-claude-bin"
+    fake_bin.mkdir(parents=True, exist_ok=True)
+    assistant = json.dumps(
+        {"type": "assistant", "message": {"role": "assistant", "content": [{"type": "text", "text": REPORT}]}},
+        separators=(",", ":"),
+    )
+    result = json.dumps({"type": "result", "subtype": "success"}, separators=(",", ":"))
+    if os.name == "nt":
+        (fake_bin / "claude.cmd").write_text(
+            "@echo off\n"
+            "more > nul\n"
+            f"echo {assistant}\n"
+            f"echo {result}\n"
+            "exit /b 0\n",
+            encoding="utf-8",
+        )
+    else:
+        script = fake_bin / "claude"
+        script.write_text(
+            "#!/bin/sh\n"
+            "cat >/dev/null\n"
+            f"printf '%s\\n' '{assistant}'\n"
+            f"printf '%s\\n' '{result}'\n",
+            encoding="utf-8",
+        )
+        script.chmod(script.stat().st_mode | stat.S_IEXEC)
+    return fake_bin
+
+
+def run_delegate(args: list[str], artifact_root: Path, env: dict[str, str] | None = None) -> subprocess.CompletedProcess[str]:
+    merged_env = {
+        **os.environ,
+        "CODEX_CLAUDE_CHILD_THREAD": "1",
+        "PYTHONDONTWRITEBYTECODE": "1",
+    }
+    if env:
+        merged_env.update(env)
+    return subprocess.run(
+        [sys.executable, str(DELEGATE), *args, "-ArtifactRoot", str(artifact_root), "-SessionKey", "edge-contract"],
+        cwd=REPO,
+        text=True,
+        capture_output=True,
+        env=merged_env,
+    )
+
+
+def verify_artifacts(run_id: str, artifact_root: Path) -> subprocess.CompletedProcess[str]:
+    return subprocess.run(
+        [sys.executable, str(VERIFY_ARTIFACTS), "-RunId", run_id, "-ArtifactRoot", str(artifact_root)],
+        cwd=REPO,
+        text=True,
+        capture_output=True,
+        env={**os.environ, "PYTHONDONTWRITEBYTECODE": "1"},
+    )
+
+
+def test_custom_output_path_is_verified_from_config() -> None:
+    with tempfile.TemporaryDirectory(prefix="codex_with_cc_custom_output_") as tmp:
+        root = Path(tmp)
+        artifact_root = root / "artifacts"
+        output_path = root / "custom-report.md"
+        fake_bin = make_fake_claude_bin(root)
+        result = run_delegate(
+            ["-Task", "custom output path", "-OutputPath", str(output_path), "-BypassPermissions"],
+            artifact_root,
+            {"PATH": f"{fake_bin}{os.pathsep}{os.environ.get('PATH', '')}"},
+        )
+        assert result.returncode == 0, result.stdout + result.stderr
+        run_id = run_id_from_output(result.stdout)
+
+        verified = verify_artifacts(run_id, artifact_root)
+
+        assert verified.returncode == 0, verified.stdout + verified.stderr
+        assert f"Artifact verification passed for RunId: {run_id}" in verified.stdout
+
+
+def test_dry_run_writes_complete_verifiable_artifacts() -> None:
+    with tempfile.TemporaryDirectory(prefix="codex_with_cc_dry_run_artifacts_") as tmp:
+        artifact_root = Path(tmp) / "artifacts"
+        result = run_delegate(["-Task", "dry run artifact contract", "-DryRun"], artifact_root)
+        assert result.returncode == 0, result.stdout + result.stderr
+        run_id = run_id_from_output(result.stdout)
+
+        verified = verify_artifacts(run_id, artifact_root)
+
+        assert verified.returncode == 0, verified.stdout + verified.stderr
+
+
+def test_task_fingerprint_uses_full_task_text() -> None:
+    shared_prefix = "x" * 1000
+    first = task_fingerprint(shared_prefix + "A", ["scope"], ["pytest"], "Implement")
+    second = task_fingerprint(shared_prefix + "B", ["scope"], ["pytest"], "Implement")
+
+    assert first != second
+
+
+def test_report_headings_ignore_fenced_code_examples() -> None:
+    fenced_example = f"```text\n{REPORT}\n```"
+    decorated_report = "\n".join(f"**{line}**" if line in ("Process Log", "Summary", "Changed Files", "Verification", "Final Result", "Risks Or Follow-ups") else line for line in REPORT.splitlines())
+
+    assert not text_has_required_report_headings(fenced_example)
+    assert not text_has_required_report_headings(decorated_report)
+    assert text_has_required_report_headings(REPORT)

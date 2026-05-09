@@ -214,8 +214,8 @@ def run_test_runtime(_: argparse.Namespace) -> int:
         assert_equal(status["failureDisposition"], "NEED_HUMAN_INTERVENTION", "unstructured-failure-disposition")
         assert_true("unstructured_success_report" in status["failureSummary"], "unstructured-failure-summary-records-reason")
         markdown_report = "\n".join(f"**{heading}**" for heading in REPORT_HEADINGS)
-        assert_true(text_has_required_report_headings(markdown_report), "markdown-report-headings-accepted")
-        missing_summary = markdown_report.replace("**Summary**\n", "")
+        assert_true(not text_has_required_report_headings(markdown_report), "markdown-report-headings-rejected")
+        missing_summary = "\n".join(REPORT_HEADINGS).replace("Summary\n", "")
         assert_true(not text_has_required_report_headings(missing_summary), "missing-report-heading-rejected")
 
         retry_report = "\n".join(
