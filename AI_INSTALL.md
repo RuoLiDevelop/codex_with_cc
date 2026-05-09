@@ -7,7 +7,7 @@
 只要用户是在让你“安装 / 集成 / 更新这套工作流”，默认进入零打扰安装模式：
 
 1. 直接执行，不要先把安装过程变成问答游戏。
-2. 如果检测到旧版脚本安装残留，先清理旧版 `codex-with-cc` skill，再继续 marketplace 安装。
+2. 如果检测到旧版脚本安装残留，先清理项目下旧安装产物和用户级旧版 `codex-with-cc` skill，再继续 marketplace 安装。
 3. 默认执行用户级安装，不要切成项目级，除非用户明确要求。
 4. 默认先检查 `aiskyhub` marketplace 是否已存在，再检查 `codex-with-cc@aiskyhub` 是否已启用。
 5. marketplace 添加或插件安装失败时直接停止并报告，不要回退到复制文件、写入旧目录或执行本地安装脚本。
@@ -39,13 +39,25 @@ Claude marketplace source: .claude-plugin/marketplace.json
 Plugin name: codex-with-cc@aiskyhub
 ```
 
-## 旧版 skill 清理
+## 旧版安装残留清理
 
-如果用户之前通过脚本安装过旧版 workflow，安装前先检查并删除这些旧入口，避免 marketplace 插件和旧 skill 同时存在：
+如果用户之前通过脚本安装过旧版 workflow，安装前先检查并删除这些旧入口，避免 marketplace 插件和旧 skill 同时存在。
+
+### 1. 清理项目下旧安装产物
+
+先清理目标项目根目录下这些旧产物：
+
+- `docs/codex_with_cc`
+- `doc/codex_with_cc`
+- `.codex/skills/codex-with-cc`
+- `AGENTS.md` 里的 `<!-- BEGIN CODEX_WITH_CC --> ... <!-- END CODEX_WITH_CC -->` 托管块
+
+如果 `AGENTS.md` 删除托管块后变空，可以直接删除整个文件。
+
+### 2. 清理用户级旧 skill
 
 - 用户级旧 skill：`$HOME/.codex/skills/codex-with-cc`
 - Windows 等价路径：`$env:USERPROFILE\.codex\skills\codex-with-cc`
-- 项目级旧 skill：`<project>/.codex/skills/codex-with-cc`
 
 如果这些路径存在，先删除，再继续 marketplace 安装。不要保留旧 skill 作为回退。
 
