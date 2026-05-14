@@ -12,12 +12,13 @@ from pathlib import Path
 
 from .artifacts import verify_artifacts
 from .claude_cli import retry_decision
-from .common import CHILD_MARKER_NAME, INVOCATION_CONTRACT, REPORT_HEADINGS, DelegateError, boolish, now_iso
+from .common import ARTIFACT_SCHEMA_VERSION, CHILD_MARKER_NAME, INVOCATION_CONTRACT, REPORT_HEADINGS, DelegateError, boolish, now_iso
 from .io_utils import load_json, read_text, write_json, write_text
 from .paths import repo_root, runtime_python_root
 from .real_chain import run_real_chain_validation
 from .reports import text_has_required_report_headings
 from .sessions import acquire_session_lease, release_session_lease, reset_session_lease_for_fresh_session
+from .workflow import workflow_path
 
 
 
@@ -220,8 +221,11 @@ def run_test_runtime(_: argparse.Namespace) -> int:
 
         retry_report = "\n".join(
             (
-                "Process Log",
-                "- repaired the report format",
+                "Status",
+                "DONE",
+                "",
+                "Role",
+                "implementer",
                 "",
                 "Summary",
                 "Structured retry succeeded.",
@@ -232,8 +236,11 @@ def run_test_runtime(_: argparse.Namespace) -> int:
                 "Verification",
                 "- fake verification passed",
                 "",
+                "Findings",
+                "- repaired the report format",
+                "",
                 "Final Result",
-                "PASS",
+                "DONE",
                 "",
                 "Risks Or Follow-ups",
                 "None",
@@ -330,7 +337,13 @@ def run_test_runtime(_: argparse.Namespace) -> int:
         prompt_path = verify_root / f"prompt_{run_id}.md"
         stream_path = verify_root / f"stream_{run_id}.jsonl"
         trace_path = verify_root / f"trace_{run_id}.log"
-        write_text(output_path, "Process Log\nSummary\nChanged Files\nVerification\nFinal Result\nok\nRisks Or Follow-ups\n")
+        workflow_id = "artifact-verify-workflow"
+        task_id = "artifact-verify-task"
+        role = "researcher"
+        write_text(
+            output_path,
+            "Status\nDONE\n\nRole\nresearcher\n\nSummary\nok\n\nChanged Files\nNone\n\nVerification\n- fake\n\nFindings\nNone\n\nFinal Result\nDONE\n\nRisks Or Follow-ups\nNone\n",
+        )
         write_text(prompt_path, "# prompt")
         write_text(stream_path, '{"type":"result","subtype":"success"}')
         write_text(trace_path, "[ok]")
@@ -348,11 +361,14 @@ def run_test_runtime(_: argparse.Namespace) -> int:
         write_json(
             verify_root / f"config_{run_id}.json",
             {
-                "artifactSchema": 2,
+                "artifactSchema": ARTIFACT_SCHEMA_VERSION,
                 "invocationContract": INVOCATION_CONTRACT,
                 "childThreadMarkerName": CHILD_MARKER_NAME,
                 "childThreadMarkerValidated": True,
                 "runId": run_id,
+                "workflowId": workflow_id,
+                "taskId": task_id,
+                "role": role,
                 "outputPath": str(output_path),
                 "statusPath": str(verify_root / f"status_{run_id}.json"),
                 "promptPath": str(prompt_path),
@@ -372,11 +388,14 @@ def run_test_runtime(_: argparse.Namespace) -> int:
         write_json(
             verify_root / f"status_{run_id}.json",
             {
-                "artifactSchema": 2,
+                "artifactSchema": ARTIFACT_SCHEMA_VERSION,
                 "invocationContract": INVOCATION_CONTRACT,
                 "childThreadMarkerName": CHILD_MARKER_NAME,
                 "childThreadMarkerValidated": True,
                 "runId": run_id,
+                "workflowId": workflow_id,
+                "taskId": task_id,
+                "role": role,
                 "status": "completed",
                 "outputPath": str(output_path),
                 "promptPath": str(prompt_path),
@@ -397,6 +416,40 @@ def run_test_runtime(_: argparse.Namespace) -> int:
                         "capturedFinalResult": True,
                     }
                 ],
+            },
+        )
+        write_json(
+            workflow_path(verify_root, workflow_id),
+            {
+                "artifactSchema": ARTIFACT_SCHEMA_VERSION,
+                "invocationContract": INVOCATION_CONTRACT,
+                "workflowId": workflow_id,
+                "createdAt": now_iso(),
+                "updatedAt": now_iso(),
+                "tasks": {
+                    task_id: {
+                        "taskId": task_id,
+                        "role": role,
+                        "scope": [],
+                        "verification": [],
+                        "runs": [run_id],
+                        "status": "completed",
+                    }
+                },
+                "runs": {
+                    run_id: {
+                        "runId": run_id,
+                        "taskId": task_id,
+                        "role": role,
+                        "status": "completed",
+                        "configPath": str(verify_root / f"config_{run_id}.json"),
+                        "statusPath": str(verify_root / f"status_{run_id}.json"),
+                        "outputPath": str(output_path),
+                        "promptPath": str(prompt_path),
+                        "rawStreamPath": str(stream_path),
+                        "tracePath": str(trace_path),
+                    }
+                },
             },
         )
         verify_artifacts(run_id, str(verify_root))

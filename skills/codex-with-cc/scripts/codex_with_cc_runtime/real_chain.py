@@ -105,7 +105,8 @@ Verification command to run after this task completes:
 {task_body}
 
 要求：
-- 输出必须包含 Process Log / Summary / Changed Files / Verification / Final Result / Risks Or Follow-ups。
+- 输出必须包含 Status / Role / Summary / Changed Files / Verification / Findings / Final Result / Risks Or Follow-ups。
+- Status 和 Final Result 必须使用同一个状态值：DONE、DONE_WITH_CONCERNS、NEEDS_CONTEXT、BLOCKED 或 FAIL。
 """
         write_text(task_path, content)
     print(

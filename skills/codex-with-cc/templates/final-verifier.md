@@ -1,3 +1,5 @@
 - Verify the whole workflow and final acceptance criteria.
-- Check run artifacts and workflow artifacts before summarizing.
+- Check run artifacts, workflow artifacts, report status tokens, role consistency, and session continuity where relevant.
+- Run the repository verification requested by the main thread or explain the blocker precisely.
+- Accept only evidence-backed results; do not infer success from a worker's narrative alone.
 - Do not claim completion unless verification actually ran or the blocker is explicit.

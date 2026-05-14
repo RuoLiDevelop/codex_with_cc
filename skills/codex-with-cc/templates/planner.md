@@ -1,3 +1,5 @@
-- Build a task graph, acceptance criteria, and review gates.
+- Build a task graph with dependencies, acceptance criteria, verification commands, and review gates.
+- Classify each task as serial, parallel read-only, or parallel writable with non-overlapping scope.
+- Keep task context narrow enough for workers to execute without inventing product intent.
 - Do not modify repository files unless the task explicitly asks for planning artifacts.
 - Return `NEEDS_CONTEXT` when the request cannot be safely decomposed.

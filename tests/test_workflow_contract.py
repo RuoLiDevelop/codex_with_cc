@@ -18,11 +18,12 @@ HOOK_SCRIPT = REPO / "hooks" / "subagent-gate-hook.mjs"
 sys.path.insert(0, str(SCRIPTS))
 
 from codex_with_cc_runtime.common import ARTIFACT_SCHEMA_VERSION, REPORT_STATUS_VALUES, WORKER_ROLES
-from codex_with_cc_runtime.reports import parse_report_status, text_has_required_report_headings
+from codex_with_cc_runtime.reports import parse_report_final_result, parse_report_role, parse_report_status, text_has_required_report_headings
 from codex_with_cc_runtime.workflow import workflow_path
 
 
-def workflow_report(status: str = "DONE", role: str = "researcher") -> str:
+def workflow_report(status: str = "DONE", role: str = "researcher", final_result: str | None = None) -> str:
+    final_result = final_result or status
     return "\n".join(
         (
             "Status",
@@ -44,7 +45,7 @@ def workflow_report(status: str = "DONE", role: str = "researcher") -> str:
             "None",
             "",
             "Final Result",
-            status,
+            final_result,
             "",
             "Risks Or Follow-ups",
             "None",
@@ -111,6 +112,13 @@ def test_report_contract_accepts_statuses_and_roles() -> None:
         report = workflow_report(status=status)
         assert text_has_required_report_headings(report)
         assert parse_report_status(report) == status
+        assert parse_report_final_result(report) == status
+        assert parse_report_role(report) == "researcher"
+
+    mismatched = workflow_report(status="DONE", role="reviewer", final_result="FAIL")
+    assert parse_report_status(mismatched) == "DONE"
+    assert parse_report_final_result(mismatched) == "FAIL"
+    assert parse_report_role(mismatched) == "reviewer"
 
 
 def test_delegate_dry_run_writes_workflow_artifacts_and_verifies_them() -> None:
@@ -164,7 +172,14 @@ def test_delegate_dry_run_writes_workflow_artifacts_and_verifies_them() -> None:
         assert workflow["artifactSchema"] == 3
         assert workflow["workflowId"] == "wf-contract"
         assert workflow["tasks"]["task-contract"]["role"] == "researcher"
+        assert workflow["tasks"]["task-contract"]["lastReportStatus"] == "DONE"
+        assert workflow["tasks"]["task-contract"]["lastReportFinalResult"] == "DONE"
+        assert workflow["tasks"]["task-contract"]["reviewDecision"] == "accepted"
         assert workflow["runs"][run_id]["taskId"] == "task-contract"
+        assert workflow["runs"][run_id]["reportStatus"] == "DONE"
+        assert workflow["runs"][run_id]["reportFinalResult"] == "DONE"
+        assert workflow["runs"][run_id]["reportRole"] == "researcher"
+        assert workflow["runs"][run_id]["reviewDecision"] == "accepted"
 
         verify_run = run_python(VERIFY_RUN, "-RunId", run_id, "-ArtifactRoot", str(artifact_root), cwd=REPO, env=env)
         verify_workflow = run_python(VERIFY_WORKFLOW, "-WorkflowId", "wf-contract", "-ArtifactRoot", str(artifact_root), cwd=REPO, env=env)

@@ -1,3 +1,6 @@
+- Restate blockers internally before editing; if the task needs a main-thread product decision, return `NEEDS_CONTEXT`.
 - Make only the scoped code or documentation changes assigned to this task.
+- When changing behavior, write or update the smallest meaningful test before implementation whenever the repository has a practical test surface.
 - Run the required verification commands and fix failures caused by the task.
+- Self-review changed files for scope compliance, minimality, verification evidence, and residual risks before reporting.
 - Return `DONE_WITH_CONCERNS` when the work passes but has residual risks.

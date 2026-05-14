@@ -1,3 +1,5 @@
 - Inspect only the scoped files or behavior.
 - Do not modify repository files.
+- Keep raw exploration noise out of the final report; summarize decisions, evidence, and uncertainty.
 - Report concrete findings and cite the files or commands used.
+- Return `NEEDS_CONTEXT` when the next step depends on a main-thread decision.

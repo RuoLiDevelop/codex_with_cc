@@ -15,4 +15,12 @@ Dispatch rules:
 - Parallel writable tasks require explicit non-overlapping `-Scope` values.
 - Use `PrimaryAnchor` for a parallel batch anchor, `ParallelPool` for independent side work, and `PrimaryReuse` for serial follow-up.
 
+Dispatch discipline:
+
+- Dispatch the immediate blocking task locally only when no child-thread delegation is needed; otherwise create the Codex child thread and keep the main thread focused on review.
+- Put medium and large instructions in the task file instead of embedding fragile inline prompts.
+- Include the exact verification commands in the task file and pass them with `-Tests` when possible.
+- Use parallel dispatch only after scope boundaries are explicit enough to avoid file conflicts.
+- After a parallel batch, wait for the anchor and side tasks before serial review or follow-up implementation.
+
 Do not dispatch default Codex workers outside the codex-with-cc chain.

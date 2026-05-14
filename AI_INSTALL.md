@@ -29,6 +29,8 @@
 - 每个 worker 必须声明 `Role`，取值为 `planner`、`implementer`、`researcher`、`reviewer` 或 `final-verifier`。
 - 当前 artifact schema 会额外生成 `workflow_<WorkflowId>.json`，用于聚合 workflow 下的 task 和 run。
 - 单次运行使用 `verify_delegate_run` 或 `verify_delegate_artifacts` 验证；整条工作流使用 `verify_delegate_workflow` 验证。
+- worker 报告必须使用 `Status / Role / Summary / Changed Files / Verification / Findings / Final Result / Risks Or Follow-ups`，并且 `Status` 与 `Final Result` 必须一致，`Role` 必须匹配委派角色。
+- 主线程按“规划任务图 -> 派发有边界的子任务 -> worker 自检 -> 规格符合性 review -> 代码质量 review -> workflow 级验证”处理子代理任务。
 
 这属于内部协议替换，不改变 README 中原有的中文安装口令，也不改变 `codex-with-cc@aiskyhub` 用户级安装路径。
 
@@ -159,10 +161,56 @@ codex_hooks = true
 
 不要把 `<version-or-hash>` 包根目录当成 workflow 根目录；`scripts`、`windows_scripts` 和 `macos_scripts` 都在 `skills/codex-with-cc` 下面。
 
+### 6. 安装后自检
+
+如果已经能定位 `<installed-workflow-root>`，优先执行插件自带自检。自检失败时直接报告失败，不要回退到复制文件或旧安装脚本。
+
+Windows：
+
+```powershell
+pwsh -NoProfile -File "<installed-workflow-root>\windows_scripts\test_delegate_runtime.ps1"
+pwsh -NoProfile -File "<installed-workflow-root>\windows_scripts\test_delegate_session_pool.ps1"
+```
+
+macOS / Linux：
+
+```bash
+"<installed-workflow-root>/macos_scripts/test_delegate_runtime.sh"
+"<installed-workflow-root>/macos_scripts/test_delegate_session_pool.sh"
+```
+
+还可以在目标项目里做一次 dry-run 委派，确认产物写到项目目录而不是插件缓存目录：
+
+```powershell
+$env:CODEX_CLAUDE_CHILD_THREAD = '1'
+pwsh -NoProfile -File "<installed-workflow-root>\windows_scripts\delegate_to_claude.ps1" `
+  -Task "dry-run install verification" `
+  -WorkflowId install-check `
+  -TaskId install-check-dry-run `
+  -Role researcher `
+  -Scope AGENTS.md `
+  -SessionKey install-check `
+  -DryRun
+```
+
+```bash
+CODEX_CLAUDE_CHILD_THREAD=1 "<installed-workflow-root>/macos_scripts/delegate_to_claude.sh" \
+  -Task "dry-run install verification" \
+  -WorkflowId install-check \
+  -TaskId install-check-dry-run \
+  -Role researcher \
+  -Scope AGENTS.md \
+  -SessionKey install-check \
+  -DryRun
+```
+
+dry-run 成功后，应能在当前项目看到 `.codex/codex_with_cc/claude-delegate` 下的 `config_<RunId>.json`、`status_<RunId>.json`、`prompt_<RunId>.md`、`claude_<RunId>.md` 和 `workflow_install-check.json`。随后用输出里的 `RunId` 做产物验证。
+
 ## 失败处理
 
 - marketplace 添加失败：直接报告失败并停止
 - 插件安装失败：直接报告失败并停止
+- 自检或 dry-run 委派失败：直接报告失败并停止
 - 不要复制仓库文件到任何本地 skill 目录
 - 不要创建或恢复旧的安装脚本路径
 - 不要把失败处理成“先手动复制再说”
@@ -176,6 +224,7 @@ codex_hooks = true
 - 是否清理了项目下旧安装产物
 - 是否清理了用户级旧版 `codex-with-cc` skill
 - `codex-with-cc@aiskyhub` 是否已经安装或更新完成
+- 是否运行了 runtime/session-pool 自检和 dry-run 委派验证
 - 是否需要用户执行 `/plugin install codex-with-cc@aiskyhub --scope user`
 - 是否需要用户重载插件列表或重启 Codex
 - 如果有步骤没执行，必须说明阻塞原因
@@ -241,13 +290,13 @@ export CODEX_CLAUDE_CHILD_THREAD=1
 检查单次委派产物：
 
 ```powershell
-pwsh -NoProfile -File "<installed-workflow-root>\windows_scripts\verify_delegate_artifacts.ps1"
-pwsh -NoProfile -File "<installed-workflow-root>\windows_scripts\verify_delegate_run.ps1"
+pwsh -NoProfile -File "<installed-workflow-root>\windows_scripts\verify_delegate_artifacts.ps1" -RunId <run-id>
+pwsh -NoProfile -File "<installed-workflow-root>\windows_scripts\verify_delegate_run.ps1" -RunId <run-id>
 ```
 
 ```bash
-"<installed-workflow-root>/macos_scripts/verify_delegate_artifacts.sh"
-"<installed-workflow-root>/macos_scripts/verify_delegate_run.sh"
+"<installed-workflow-root>/macos_scripts/verify_delegate_artifacts.sh" -RunId <run-id>
+"<installed-workflow-root>/macos_scripts/verify_delegate_run.sh" -RunId <run-id>
 ```
 
 检查整条 workflow：

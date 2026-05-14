@@ -182,6 +182,36 @@ def test_dry_run_writes_complete_verifiable_artifacts() -> None:
         assert verified.returncode == 0, verified.stdout + verified.stderr
 
 
+def test_artifact_verification_rejects_status_final_result_mismatch() -> None:
+    with tempfile.TemporaryDirectory(prefix="codex_with_cc_report_status_mismatch_") as tmp:
+        artifact_root = Path(tmp) / "artifacts"
+        result = run_delegate(["-Task", "status mismatch contract", "-DryRun"], artifact_root)
+        assert result.returncode == 0, result.stdout + result.stderr
+        run_id = run_id_from_output(result.stdout)
+        output = artifact_root / f"claude_{run_id}.md"
+        output.write_text(output.read_text(encoding="utf-8").replace("Final Result\nDONE", "Final Result\nFAIL"), encoding="utf-8")
+
+        verified = verify_artifacts(run_id, artifact_root)
+
+        assert verified.returncode != 0
+        assert "Final Result" in (verified.stdout + verified.stderr)
+
+
+def test_artifact_verification_rejects_report_role_mismatch() -> None:
+    with tempfile.TemporaryDirectory(prefix="codex_with_cc_report_role_mismatch_") as tmp:
+        artifact_root = Path(tmp) / "artifacts"
+        result = run_delegate(["-Task", "role mismatch contract", "-Role", "researcher", "-DryRun"], artifact_root)
+        assert result.returncode == 0, result.stdout + result.stderr
+        run_id = run_id_from_output(result.stdout)
+        output = artifact_root / f"claude_{run_id}.md"
+        output.write_text(output.read_text(encoding="utf-8").replace("Role\nresearcher", "Role\nimplementer"), encoding="utf-8")
+
+        verified = verify_artifacts(run_id, artifact_root)
+
+        assert verified.returncode != 0
+        assert "role" in (verified.stdout + verified.stderr).lower()
+
+
 def test_missing_claude_writes_complete_verifiable_failure_artifacts() -> None:
     with tempfile.TemporaryDirectory(prefix="codex_with_cc_missing_claude_") as tmp:
         artifact_root = Path(tmp) / "artifacts"

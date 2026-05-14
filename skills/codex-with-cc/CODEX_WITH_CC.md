@@ -40,6 +40,18 @@ The plugin exposes the entry skill plus stage-specific sibling skills:
 - `codex-with-cc-reviewing`: judge worker reports and decide whether to accept, reject, or rework.
 - `codex-with-cc-finishing`: run final workflow verification and summarize delivery.
 
+## Workflow Method
+Treat delegation as a controlled delivery pipeline:
+
+1. Plan before dispatch. The main thread must define the task graph, scope boundaries, acceptance criteria, verification commands, and review gates.
+2. Dispatch only bounded work. A worker task must be narrow enough that the worker can execute it without inventing product intent or widening file ownership.
+3. Preserve context deliberately. Put stable instructions in the task file, keep noisy logs in artifacts, and keep main-thread context focused on decisions and evidence.
+4. Require worker self-review. Before reporting, each worker checks scope compliance, changed files, verification output, and remaining risks.
+5. Review in two passes. First judge whether the worker satisfied the assigned spec; then judge code quality, regression risk, and verification sufficiency.
+6. Finish with evidence. A workflow is complete only when run artifacts, workflow artifacts, session continuity where relevant, and repository tests support acceptance.
+
+If any stage lacks enough evidence, the main thread must request rework or report the blocker instead of smoothing over the gap.
+
 ## Platform Hook Gate
 The Codex plugin declares `./hooks/hooks.json` as a platform hook layer. When the host has Codex hooks enabled, `SessionStart` injects the full `SKILL.md` and `CODEX_WITH_CC.md` contract inside an `<EXTREMELY_IMPORTANT>` bootstrap context, `UserPromptSubmit` reinforces that full contract whenever the user prompt mentions subagents or delegation, and `PreToolUse` denies supported tool calls that try direct `claude`, direct main-thread `delegate_to_claude.*`, missing workflow metadata, or parallel writable work without scope.
 
@@ -63,12 +75,16 @@ Worker roles:
 - `reviewer`: review worker output, changed files, and verification evidence.
 - `final-verifier`: workflow-level acceptance and residual risk summary.
 
+Workers do not own orchestration. They must not create nested delegate runs, broaden scope, or decide that unassigned follow-up work should be executed. When a worker lacks context, it reports `NEEDS_CONTEXT`.
+
 ## Session Modes
 - `PrimaryReuse`: default serial mode. Reuses the main Claude session for continuity.
 - `PrimaryAnchor`: parallel-batch anchor. Its result becomes the main reusable context for later serial work.
 - `ParallelPool`: independent parallel side work. Uses reusable pool sessions without writing to the main session.
 
 Only use `-AllowParallel` when task scopes are independent. Parallel writable tasks must pass explicit `-Scope` values.
+
+Serial work uses `PrimaryReuse` so the main Claude session can keep useful continuity. Parallel batches use one `PrimaryAnchor` for the main line and `ParallelPool` for independent side work. After parallel work, return to serial review before accepting implementation changes.
 
 ## Worker Output
 Claude Code must finish with these exact headings:
@@ -95,6 +111,8 @@ FAIL
 ```
 
 Verification must list commands actually run and their outcomes. If verification is blocked, the report must explain the blocker and whether it is unrelated to the delegated change.
+
+The report is evidence, not a success claim by itself. Status and Final Result must match. `Role` must match the delegated role. Reviewers and final verifiers should treat missing commands, vague outcomes, or scope drift as acceptance blockers.
 
 ## Artifacts
 Delegation artifacts are written under `.codex/codex_with_cc/claude-delegate` by default:

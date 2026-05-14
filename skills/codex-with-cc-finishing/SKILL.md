@@ -12,6 +12,7 @@ Completion checklist:
 - Run `verify_delegate_workflow.*` for the `WorkflowId`.
 - Run `verify_delegate_chain.*` when the workflow used PrimaryAnchor, ParallelPool, or PrimaryReuse continuity checks.
 - Run the repository's focused or full regression command after accepted implementation tasks.
-- Summarize accepted tasks, rejected or blocked tasks, verification commands, and residual risks.
+- Confirm every accepted run has matching Status, Role, Final Result, and workflow artifact metadata.
+- Summarize only accepted tasks, rejected tasks, blocked tasks, verification evidence, and residual risks.
 
 Do not claim completion unless verification actually ran and passed or the blocker is explicitly reported.

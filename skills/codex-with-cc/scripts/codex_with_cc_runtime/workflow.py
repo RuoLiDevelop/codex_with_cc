@@ -7,6 +7,7 @@ from typing import Any
 
 from .common import ARTIFACT_SCHEMA_VERSION, INVOCATION_CONTRACT, WORKER_ROLES, now_iso
 from .io_utils import load_json, write_json
+from .reports import parse_report_final_result, parse_report_role, parse_report_status, report_summary_line
 
 
 def safe_workflow_id(value: str) -> str:
@@ -54,6 +55,16 @@ def empty_workflow(workflow_id: str) -> dict[str, Any]:
     }
 
 
+def review_decision_for(run_status: str, report_status: str, report_final_result: str) -> str:
+    if run_status != "completed":
+        return "failed"
+    if report_status == "DONE" and report_final_result == "DONE":
+        return "accepted"
+    if report_status in ("DONE_WITH_CONCERNS", "NEEDS_CONTEXT", "BLOCKED"):
+        return "needs-review"
+    return "rejected"
+
+
 def update_workflow_record(
     artifact_root: Path,
     workflow_id: str,
@@ -75,6 +86,12 @@ def update_workflow_record(
         workflow = load_json(path)
     else:
         workflow = empty_workflow(workflow_id)
+    report_text = output_path.read_text(encoding="utf-8") if output_path.exists() else ""
+    report_status = parse_report_status(report_text)
+    report_final_result = parse_report_final_result(report_text)
+    report_role = parse_report_role(report_text)
+    report_summary = report_summary_line(report_text)
+    review_decision = review_decision_for(run_status, report_status, report_final_result)
     workflow["artifactSchema"] = ARTIFACT_SCHEMA_VERSION
     workflow["invocationContract"] = INVOCATION_CONTRACT
     workflow["workflowId"] = workflow_id
@@ -96,6 +113,10 @@ def update_workflow_record(
     task["scope"] = scope
     task["verification"] = verification
     task["status"] = run_status
+    task["lastReportStatus"] = report_status
+    task["lastReportFinalResult"] = report_final_result
+    task["lastReportRole"] = report_role
+    task["reviewDecision"] = review_decision
     if run_id not in task["runs"]:
         task["runs"].append(run_id)
     workflow["runs"][run_id] = {
@@ -103,6 +124,11 @@ def update_workflow_record(
         "taskId": task_id,
         "role": role,
         "status": run_status,
+        "reportStatus": report_status,
+        "reportFinalResult": report_final_result,
+        "reportRole": report_role,
+        "reportSummary": report_summary,
+        "reviewDecision": review_decision,
         "configPath": str(config_path),
         "statusPath": str(status_path),
         "outputPath": str(output_path),

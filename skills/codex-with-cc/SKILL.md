@@ -25,6 +25,19 @@ Codex main thread -> Codex spawn_agent child thread -> delegate_to_claude.* -> C
 
 The installed plugin also declares `./hooks/hooks.json` so Codex hosts with hooks enabled can inject this contract at session start, reinforce it on matching user prompts, and deny supported non-compliant tool calls.
 
+## Operating Method
+
+Use this workflow as a staged control loop, not as a prompt shortcut:
+
+1. Plan the user request into a task graph with explicit acceptance criteria, scope, verification commands, and review gates.
+2. Dispatch only tasks whose scopes are clear enough for a worker to execute without guessing.
+3. Give each worker a complete but narrow task file: goal, allowed files, forbidden actions, verification, and report contract.
+4. Require each worker to self-check before reporting: scope compliance, changed files, verification evidence, and residual risks.
+5. Review every implementation in two passes: first spec compliance, then code quality and regression risk.
+6. Finish only after workflow-level verification confirms run artifacts, workflow artifacts, session continuity when relevant, and repository tests.
+
+Workers are context consumers, not decision owners. Codex main thread owns architecture, task boundaries, acceptance, rework decisions, and final delivery.
+
 The Codex child thread must:
 
 - Use `model: gpt-5.3-codex`, `reasoning_effort: medium`, and `fork_context: false`.
@@ -49,11 +62,14 @@ Use these sibling skills when the work has enough surface area to need staged co
 In the main Codex thread:
 
 - Understand the user request, define scope, choose serial or parallel delegation, and review all worker results.
+- Prefer serial execution when write scopes overlap or acceptance criteria are still unstable.
+- Use parallel execution only for independent read-only tasks or writable tasks with explicit non-overlapping `-Scope` values.
 - Do not run `claude` directly.
 - Do not run `delegate_to_claude.*` directly except when `CODEX_WITH_CC.md` explicitly allows the trusted local terminal fallback.
 - Verify each run with `verify_delegate_run.*` or `verify_delegate_artifacts.*`.
 - Verify the whole workflow with `verify_delegate_workflow.*`; use `verify_delegate_chain.*` when validating primary/parallel session continuity.
 - Reject or return work that does not satisfy the requested scope, tests, report contract, or review gate.
+- Do not summarize a worker as successful until the artifacts and the worker's verification evidence both support that claim.
 
 ## Worker Report Contract
 

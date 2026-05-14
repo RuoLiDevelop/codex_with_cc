@@ -31,6 +31,7 @@ const FALLBACK_CONTEXT = [
   "- Any child-agent, subagent, child-thread, delegation, worker-execution, 子代理, 子线程, 多代理, 委派, 派工, or 执行层 request must use the codex-with-cc workflow.",
   "- Required chain: Codex main thread -> Codex spawn_agent child thread -> delegate_to_claude.* -> Claude Code CLI.",
   "- Do not use the default Codex subagent flow, a host-provided worker shortcut, direct claude execution, or direct main-thread delegate_to_claude.* execution.",
+  "- Use the staged flow: plan task graph, dispatch bounded tasks, execute with scoped worker context, review spec compliance, review quality, then verify the workflow.",
   "- Child spawn metadata must be model: gpt-5.3-codex, reasoning_effort: medium, fork_context: false.",
   "- The child must set CODEX_CLAUDE_CHILD_THREAD=1 and call delegate_to_claude.* with -TaskFile.",
 ].join("\n");

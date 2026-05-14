@@ -9,7 +9,7 @@ from typing import Any, Iterable
 from .common import ARTIFACT_SCHEMA_VERSION, CHILD_MARKER_NAME, INVOCATION_CONTRACT, REPORT_STATUS_VALUES, WORKER_ROLES, DelegateError, boolish, same_path
 from .io_utils import load_json
 from .paths import repo_root
-from .reports import parse_report_status, path_has_required_report_headings
+from .reports import parse_report_final_result, parse_report_role, parse_report_status, path_has_required_report_headings
 from .workflow import workflow_path
 
 
@@ -53,6 +53,16 @@ def verify_artifacts(run_id: str, artifact_root_value: str | None) -> dict[str, 
     report_status = parse_report_status(output_path.read_text(encoding="utf-8"))
     if report_status not in REPORT_STATUS_VALUES:
         raise DelegateError(f"Delegate output has an invalid report status: {report_status}")
+    report_final_result = parse_report_final_result(output_path.read_text(encoding="utf-8"))
+    if report_final_result not in REPORT_STATUS_VALUES:
+        raise DelegateError(f"Delegate output has an invalid Final Result: {report_final_result}")
+    if report_final_result != report_status:
+        raise DelegateError(f"Delegate output Status and Final Result mismatch. Status={report_status}; Final Result={report_final_result}.")
+    report_role = parse_report_role(output_path.read_text(encoding="utf-8"))
+    if report_role not in WORKER_ROLES:
+        raise DelegateError(f"Delegate output has an invalid report role: {report_role}")
+    if report_role != str(config.get("role")):
+        raise DelegateError(f"Delegate output role mismatch. Config role={config.get('role')}; report role={report_role}.")
     for prop in ("workflowId", "taskId", "role"):
         if not str(config.get(prop) or "").strip():
             raise DelegateError(f"Delegate config is missing {prop}.")

@@ -89,6 +89,9 @@ def test_codex_with_cc_skill_contract() -> None:
         "Findings",
         "Final Result",
         "Risks Or Follow-ups",
+        "Operating Method",
+        "spec compliance",
+        "workflow-level verification",
     ):
         assert required in text
     assert "check_subagent_gate" not in text
@@ -102,6 +105,9 @@ def test_codex_with_cc_skill_contract() -> None:
 
     contract = (skill / "CODEX_WITH_CC.md").read_text(encoding="utf-8")
     assert "workflow/task/run" in contract
+    assert "Workflow Method" in contract
+    assert "Review in two passes" in contract
+    assert "Status and Final Result must match" in contract
     assert "planner" in contract
     assert "implementer" in contract
     assert "researcher" in contract

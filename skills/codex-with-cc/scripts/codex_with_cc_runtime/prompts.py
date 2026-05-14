@@ -37,6 +37,7 @@ def build_prompt(
 - Treat `{rel}/CODEX_WITH_CC.md` as the workflow contract to inspect when the task scope requires it, not as an execution recipe for this worker.
 - If the task is an audit or validation, inspect the scoped files and run the listed verification commands directly instead of creating nested delegate runs.
 - If you think another delegate run is required, stop, set `Status` to `NEEDS_CONTEXT`, and explain why in `Findings` instead of invoking it yourself.
+- Before reporting, perform a self-review for scope compliance, changed files, verification evidence, and residual risks.
 """
     return f"""Execute the delegated task below now. This is not a readiness check; do not ask what to work on.
 
@@ -97,10 +98,11 @@ Hard requirements:
 - Do not return code that you know fails to compile, analyze, or pass the required focused tests. Fix verification failures and rerun them until they pass.
 - If verification is blocked by an external dependency or a clearly pre-existing unrelated failure, report the exact command, failure summary, and why it is not caused by your changes.
 - Never claim verification passed unless you actually ran the command and saw it pass.
+- For implementation work, summarize the test or self-review evidence that demonstrates the assigned behavior, not broad unrelated cleanup.
 - Process and summarize your own CLI output. The Codex child thread will forward your final structured result; it should not reinterpret long logs for you.
 - Treat this script as a child-thread worker entry only. Do not reinterpret it as permission for the Codex main thread to invoke Claude directly.
 - Keep raw verbose command output in the transcript/log instead of duplicating it.
-- Finish with this exact report skeleton. Do not add text before `Status`; do not bold or decorate these headings:
+- Finish with this exact report skeleton. Status and Final Result must be the same token. Role must be `{role}`. Do not add text before `Status`; do not bold or decorate these headings:
 Status
 <DONE, DONE_WITH_CONCERNS, NEEDS_CONTEXT, BLOCKED, or FAIL>
 

@@ -40,6 +40,10 @@ def test_ai_install_doc_contract() -> None:
     assert "WorkflowId" in text
     assert "TaskId" in text
     assert "Role" in text
+    assert "Status / Role / Summary / Changed Files / Verification / Findings / Final Result / Risks Or Follow-ups" in text
+    assert "test_delegate_runtime.ps1" in text
+    assert "test_delegate_session_pool.ps1" in text
+    assert "dry-run install verification" in text
     assert "verify_delegate_run" in text
     assert "verify_delegate_workflow" in text
     assert "<installed-workflow-root>" in text

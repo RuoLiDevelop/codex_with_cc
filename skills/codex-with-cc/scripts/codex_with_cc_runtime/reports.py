@@ -4,7 +4,7 @@ import re
 from pathlib import Path
 from typing import Any
 
-from .common import REPORT_HEADINGS, REPORT_STATUS_VALUES
+from .common import REPORT_HEADINGS, REPORT_STATUS_VALUES, WORKER_ROLES
 from .io_utils import read_text
 
 
@@ -37,6 +37,30 @@ def parse_report_status(text: str | None) -> str:
         return ""
     status = report_section(text, "Status").splitlines()[0].strip().upper() if report_section(text, "Status") else ""
     return status if status in REPORT_STATUS_VALUES else ""
+
+
+def parse_report_final_result(text: str | None) -> str:
+    if not text:
+        return ""
+    final_result = report_section(text, "Final Result").splitlines()[0].strip().upper() if report_section(text, "Final Result") else ""
+    return final_result if final_result in REPORT_STATUS_VALUES else ""
+
+
+def parse_report_role(text: str | None) -> str:
+    if not text:
+        return ""
+    role = report_section(text, "Role").splitlines()[0].strip().lower() if report_section(text, "Role") else ""
+    return role if role in WORKER_ROLES else ""
+
+
+def report_summary_line(text: str | None) -> str:
+    if not text:
+        return ""
+    for line in report_section(text, "Summary").splitlines():
+        stripped = line.strip()
+        if stripped:
+            return stripped
+    return ""
 
 
 
