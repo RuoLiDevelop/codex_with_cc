@@ -13,7 +13,7 @@ Do not satisfy a triggered request with default Codex subagent behavior, direct 
 
 ## Workflow Contract
 
-Read `CODEX_WITH_CC.md` in this skill directory before using the workflow. Treat it as the single contract for task-file-only dispatch, workflow/task/run artifacts, role rules, review gates, and verification.
+Read `CODEX_WITH_CC.md` in this skill directory before using the workflow. Treat it as the human contract for task-file-only dispatch, workflow/task/run artifacts, role rules, review gates, and verification. Treat `contract.json` as the machine-readable source for trigger patterns, report headings, roles, status tokens, spawn metadata, and forbidden legacy arguments.
 
 This skill is distributed through a plugin-managed installation. When invoking bundled scripts, run them from the target project's current working directory so `.codex/codex_with_cc` tasks and artifacts are written to that project, not to the plugin cache.
 
@@ -30,7 +30,7 @@ The installed plugin also declares `./hooks/hooks.json` so Codex hosts with hook
 Use this workflow as a Superpowers-style staged control loop, not as a prompt shortcut:
 
 1. Clarify intent and acceptance criteria before dispatch.
-2. Write bounded task files with goal, scope, forbidden work, verification commands, and review gates.
+2. Write bounded task files with `Goal`, `Allowed Scope`, `Forbidden Actions`, `Acceptance Criteria`, `Verification`, and `Report Requirements`.
 3. Dispatch fresh child threads with `model: gpt-5.3-codex`, `reasoning_effort: medium`, and `fork_context: false`.
 4. Require implementers to use test-first or verification-first evidence when changing behavior.
 5. Review every implementation in two passes: spec compliance first, then code quality and regression risk.
@@ -46,6 +46,8 @@ The Codex child thread must:
 - Avoid legacy inline `-Task`, legacy `-Mode`, and implicit session-key fallback.
 - Keep changes inside the delegated scope and pass `-Scope` for any parallel writable work.
 - Run the requested verification.
+
+Task files that omit the required sections are rejected before Claude Code starts. This keeps worker context explicit and removes the old one-line prompt path.
 
 ## Multi-Skill Chain
 

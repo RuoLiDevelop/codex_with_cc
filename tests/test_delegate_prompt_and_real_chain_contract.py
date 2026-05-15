@@ -6,6 +6,8 @@ import sys
 import tempfile
 from pathlib import Path
 
+from tests.task_helpers import compliant_task
+
 repo = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(repo / "skills" / "codex-with-cc" / "scripts"))
 from codex_with_cc_runtime.reports import build_report_repair_prompt
@@ -19,7 +21,7 @@ def test_delegate_prompt_and_real_chain_contract() -> None:
         root = Path(tmp)
         artifact_root = root / "artifacts"
         task_file = root / "prompt-contract-task.md"
-        task_file.write_text("audit the prompt contract", encoding="utf-8")
+        task_file.write_text(compliant_task("audit the prompt contract"), encoding="utf-8")
         prompt_run = subprocess.run(
             [
                 sys.executable,

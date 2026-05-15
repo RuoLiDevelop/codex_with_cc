@@ -9,6 +9,8 @@ import sys
 import tempfile
 from pathlib import Path
 
+from tests.task_helpers import compliant_task
+
 
 REPO = Path(__file__).resolve().parents[1]
 WORKFLOW = REPO / "skills" / "codex-with-cc"
@@ -22,6 +24,7 @@ def install_simulated_plugin(temp_root: Path) -> tuple[Path, Path]:
     project_root.mkdir(parents=True, exist_ok=True)
     shutil.copytree(SCRIPTS, plugin_root / "scripts")
     shutil.copy2(WORKFLOW / "CODEX_WITH_CC.md", plugin_root / "CODEX_WITH_CC.md")
+    shutil.copy2(WORKFLOW / "contract.json", plugin_root / "contract.json")
     return codex_home, project_root
 
 
@@ -74,7 +77,7 @@ def test_marketplace_install_uses_project_cwd_for_default_paths() -> None:
         task_root = project_root / ".codex" / "codex_with_cc" / "tasks" / "install"
         task_root.mkdir(parents=True)
         task_file = task_root / "marketplace-install-dry-run.md"
-        task_file.write_text("marketplace install dry run", encoding="utf-8")
+        task_file.write_text(compliant_task("marketplace install dry run"), encoding="utf-8")
         dry_run = run_python(
             delegate,
             "-TaskFile",

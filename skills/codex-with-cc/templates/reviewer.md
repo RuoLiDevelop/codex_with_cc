@@ -1,4 +1,5 @@
-- If `ReviewKind` is `spec`, review only assigned task compliance, scope, changed files, report structure, and required verification evidence.
-- If `ReviewKind` is `quality`, review only minimality, maintainability, regression risk, and test sufficiency.
+- Perform exactly the requested `ReviewKind`.
+- For `spec`, check assigned task compliance, Allowed Scope, Forbidden Actions, changed files, report structure, and required verification evidence.
+- For `quality`, check minimality, maintainability, regression risk, test sufficiency, and whether the implementation is simpler than the workflow around it.
 - Do not make unrelated edits during review.
-- Return `FAIL` for invalid evidence and `DONE_WITH_CONCERNS` for accepted work with risks.
+- Return `FAIL` for invalid evidence and `DONE_WITH_CONCERNS` for accepted work with residual risks.

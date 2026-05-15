@@ -6,6 +6,8 @@ import shutil
 import subprocess
 import sys
 
+from tests.task_helpers import compliant_task
+
 
 REPO = Path(__file__).resolve().parents[1]
 BUILD_ROOT = REPO / "build"
@@ -177,7 +179,7 @@ def test_build_project_smoke_runs_hook_gate_and_delegate_dry_run() -> None:
     task_dir.mkdir(parents=True)
     task_file = task_dir / "120000000-smoke-task.md"
     task_file.write_text(
-        "# Smoke Task\n\nInspect this fake project and report the routing contract. Do not modify files.\n",
+        compliant_task("Inspect this fake project and report the routing contract. Do not modify files."),
         encoding="utf-8",
     )
     artifact_root = project_root / ".codex" / "codex_with_cc" / "claude-delegate"

@@ -1,21 +1,21 @@
-# Codex With Claude Code
+# Codex With CC
 
 This is the portable contract for the Codex main thread -> Codex child thread -> Claude Code CLI workflow.
 
 ## Required Reading
-Read this file before using the workflow in this repository. Treat it as the single source of truth for task planning, dispatch, review, artifacts, and verification.
+Read this file before using the workflow in this repository. Treat `contract.json` as the machine-readable source for roles, status tokens, report headings, trigger patterns, required spawn metadata, and forbidden legacy arguments.
 
 ## Core Contract
-1. Any child-agent, subagent, child-thread, subthread, delegation, worker-execution, 子代理, 子线程, 多代理, 委派, 派工, or 执行层 request must use this workflow.
-2. The Codex main thread owns intent clarification, design approval, task boundaries, acceptance criteria, review decisions, and final delivery.
-3. The main thread must not run `claude` directly and must not run `delegate_to_claude.*` directly, except for the trusted local terminal fallback below.
-4. Every Claude Code worker run must be carried by a Codex `spawn_agent` child thread using `model: gpt-5.3-codex`, `reasoning_effort: medium`, and `fork_context: false`.
+1. Any child-agent, subagent, sub-agent, child-thread, subthread, delegation, worker-execution, 子代理, 子线程, 多代理, 委派, 派工, or 执行层 request must use this workflow.
+2. Do not replace it with the default Codex subagent flow, host worker shortcuts, direct `claude`, or direct main-thread `delegate_to_claude.*`.
+3. The Codex main thread owns design, task boundaries, acceptance criteria, review decisions, rework decisions, and final delivery.
+4. Every Claude Code worker run must be carried by a fresh Codex `spawn_agent` child thread using `model: gpt-5.3-codex`, `reasoning_effort: medium`, and `fork_context: false`.
 5. The child thread must set `CODEX_CLAUDE_CHILD_THREAD=1` before invoking `delegate_to_claude.*`.
-6. Delegate commands must use task-file-only invocation: `-TaskFile`, `-WorkflowId`, `-TaskId`, `-Role`, and `-SessionKey` are required.
+6. Delegate commands must use task-file-only invocation. `-TaskFile`, `-WorkflowId`, `-TaskId`, `-Role`, and `-SessionKey` are required.
 7. Legacy inline `-Task`, legacy `-Mode`, missing workflow metadata, and implicit session-key fallback are not supported.
 8. `delegate_to_claude.*` must not pass `--effort`; Claude Code uses its configured default effort.
-9. Workers must keep changes inside the delegated scope, run the required verification, and finish with the exact report headings in this document.
-10. Claude workers must read and follow applicable project rules and Codex skills before implementing or changing behavior.
+9. Workers must follow the TaskFile contract: Goal, Allowed Scope, Forbidden Actions, Acceptance Criteria, Verification, and Report Requirements.
+10. Workers must finish with the exact report headings and concrete verification evidence.
 
 ## Trigger Rule
 Any user mention of child-agent, subagent, sub-agent, child-thread, subthread, delegation, worker-execution, or Chinese equivalents such as 子代理、子线程、多代理、委派、派工、执行层 is a workflow trigger. When triggered, the main Codex thread must use this custom delegation workflow and must not satisfy the request with the default Codex subagent flow, a host-provided agent shortcut, direct `claude` execution, or direct main-thread execution of `delegate_to_claude.*`.
@@ -30,21 +30,31 @@ The protocol models every request as:
 
 Artifacts use the current artifact schema. Each run writes `config_<RunId>.json`, `status_<RunId>.json`, `prompt_<RunId>.md`, `stream_<RunId>.jsonl`, `trace_<RunId>.log`, and `claude_<RunId>.md`. Each workflow also writes `workflow_<WorkflowId>.json`, which indexes tasks, runs, scope, verification, review metadata, and final acceptance state.
 
-Reviewer runs must pass `-ReviewForTaskId` and `-ReviewKind spec` or `-ReviewKind quality`. Implementer tasks are not workflow-accepted until both spec and quality reviews are accepted.
-
-Task dependencies can be recorded with repeated `-DependsOn <task-id>` values so `workflow_<WorkflowId>.json` preserves the intended execution graph.
+Reviewer runs must pass `-ReviewForTaskId` and `-ReviewKind spec` or `-ReviewKind quality`. Implementer tasks are not workflow-accepted until both spec and quality reviews are accepted. Task dependencies can be recorded with repeated `-DependsOn <task-id>` values.
 
 ## Workflow Method
 Use this as a controlled delivery pipeline, borrowing the core discipline from Superpowers:
 
 1. Design gate: clarify the goal, success criteria, scope, constraints, and acceptance evidence before dispatch.
-2. Plan gate: split work into task-file-sized assignments with explicit scope, forbidden work, verification commands, and review gates.
+2. Plan gate: split work into task-file-sized assignments with explicit allowed scope, forbidden actions, verification commands, and review gates.
 3. Dispatch gate: create a fresh child thread per task; do not let workers inherit noisy main-thread context.
 4. Implementer gate: implementation workers must use test-first or the smallest equivalent verification-first evidence when the repository has a practical test surface.
-5. Review in two passes. First perform spec compliance review; then perform code quality, minimality, regression-risk, and test-sufficiency review.
+5. Review in two passes. First perform spec compliance review; then perform quality review for minimality, maintainability, regression risk, and test sufficiency.
 6. Finish with evidence: run artifact verification, workflow verification, session continuity checks when relevant, and repository regression tests.
 
 If any stage lacks evidence, the main thread must request rework or report the blocker instead of smoothing over the gap.
+
+## TaskFile Contract
+Every `-TaskFile` must contain these sections:
+
+- `Goal`: the exact assignment for this worker.
+- `Allowed Scope`: files, directories, or behavior the worker may inspect or change.
+- `Forbidden Actions`: files, behaviors, and follow-up work the worker must not execute.
+- `Acceptance Criteria`: self-checks before reporting.
+- `Verification`: exact commands to run, or the smallest meaningful verification expected.
+- `Report Requirements`: the required report headings and status rules.
+
+The runtime rejects task files that do not contain these sections. This makes worker context explicit and prevents old one-line prompts from acting as hidden orchestration.
 
 ## Platform Hook Gate
 The Codex plugin declares `./hooks/hooks.json` as a semi-hard platform gate. When hooks are enabled:
@@ -53,7 +63,7 @@ The Codex plugin declares `./hooks/hooks.json` as a semi-hard platform gate. Whe
 - `UserPromptSubmit` reinforces the contract for delegation trigger words.
 - `PreToolUse` denies visible direct `claude`, direct main-thread `delegate_to_claude.*`, missing `CODEX_CLAUDE_CHILD_THREAD=1`, missing `-TaskFile`, missing workflow metadata, missing `-SessionKey`, legacy `-Task`, legacy `-Mode`, reviewer runs without review metadata, and parallel writable runs without `-Scope`.
 
-This is not a kernel boundary; final responsibility remains with the Codex main thread.
+The hook reads `contract.json` for shared tokens. This is not a kernel boundary; final responsibility remains with the Codex main thread.
 
 ## Trusted Local Terminal Fallback
 This fallback is an execution-location fallback only. Preserve the same `CODEX_CLAUDE_CHILD_THREAD=1` marker, task file, `WorkflowId`, `TaskId`, `Role`, `SessionKey`, session mode, artifact root, scope, and permission flags that the child thread would have used.
@@ -161,19 +171,7 @@ export CODEX_CLAUDE_CHILD_THREAD=1
   -BypassPermissions
 ```
 
-Reviewer runs add:
-
-```text
--Role reviewer -ReviewForTaskId <implementer-task-id> -ReviewKind spec
-```
-
-or:
-
-```text
--Role reviewer -ReviewForTaskId <implementer-task-id> -ReviewKind quality
-```
-
-Use `PrimaryAnchor -AllowParallel` for the main branch of a parallel batch and `ParallelPool -AllowParallel` for independent side work.
+Reviewer runs add `-Role reviewer -ReviewForTaskId <implementer-task-id> -ReviewKind spec` or `-Role reviewer -ReviewForTaskId <implementer-task-id> -ReviewKind quality`.
 
 ## Verification
 Run local regression tests after installing or changing this workflow.
@@ -194,16 +192,4 @@ WORKFLOW_ROOT="<installed-workflow-root>"
 "$WORKFLOW_ROOT/macos_scripts/test_delegate_session_pool.sh"
 ```
 
-Verify a run and workflow:
-
-```powershell
-pwsh -NoProfile -File (Join-Path $workflowRoot 'windows_scripts\verify_delegate_run.ps1') -RunId <run-id>
-pwsh -NoProfile -File (Join-Path $workflowRoot 'windows_scripts\verify_delegate_workflow.ps1') -WorkflowId <workflow-id>
-```
-
-or on macOS:
-
-```bash
-"$WORKFLOW_ROOT/macos_scripts/verify_delegate_run.sh" -RunId <run-id>
-"$WORKFLOW_ROOT/macos_scripts/verify_delegate_workflow.sh" -WorkflowId <workflow-id>
-```
+Verify a run and workflow with `verify_delegate_run.*` and `verify_delegate_workflow.*`.

@@ -10,6 +10,7 @@ Read `../codex-with-cc/CODEX_WITH_CC.md` before reviewing delegated results.
 Review duties:
 
 - Verify the run artifact with `verify_delegate_run.*` or `verify_delegate_artifacts.*`.
+- Confirm the worker was launched from a TaskFile with the required contract sections, not an inline prompt.
 - Check that Status and Final Result use the same valid status token.
 - Check that Role matches the delegated role.
 - Check that reviewer runs include `ReviewForTaskId` and `ReviewKind`.

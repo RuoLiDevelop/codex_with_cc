@@ -5,23 +5,16 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+from .contract import contract_list, load_contract
 
-ARTIFACT_SCHEMA_VERSION = 3
-INVOCATION_CONTRACT = "codex_with_cc_workflow"
-CHILD_MARKER_NAME = "CODEX_CLAUDE_CHILD_THREAD"
-CHILD_MARKER_VALUE = "1"
-REPORT_HEADINGS = (
-    "Status",
-    "Role",
-    "Summary",
-    "Changed Files",
-    "Verification",
-    "Findings",
-    "Final Result",
-    "Risks Or Follow-ups",
-)
-REPORT_STATUS_VALUES = ("DONE", "DONE_WITH_CONCERNS", "NEEDS_CONTEXT", "BLOCKED", "FAIL")
-WORKER_ROLES = ("planner", "implementer", "researcher", "reviewer", "final-verifier")
+CONTRACT = load_contract()
+ARTIFACT_SCHEMA_VERSION = int(CONTRACT["artifactSchemaVersion"])
+INVOCATION_CONTRACT = str(CONTRACT["invocationContract"])
+CHILD_MARKER_NAME = str(CONTRACT["childThread"]["markerName"])
+CHILD_MARKER_VALUE = str(CONTRACT["childThread"]["markerValue"])
+REPORT_HEADINGS = contract_list("reportHeadings")
+REPORT_STATUS_VALUES = contract_list("reportStatusValues")
+WORKER_ROLES = contract_list("workerRoles")
 SKILL_NAME = "codex-with-cc"
 
 

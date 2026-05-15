@@ -6,6 +6,8 @@ import sys
 import tempfile
 from pathlib import Path
 
+from tests.task_helpers import compliant_task
+
 
 repo = Path(__file__).resolve().parents[1]
 delegate = repo / "skills" / "codex-with-cc" / "scripts" / "delegate_to_claude.py"
@@ -49,7 +51,7 @@ def test_delegate_sends_long_prompt_via_stdin() -> None:
         fake_bin = make_fake_claude_bin(root, stdin_capture)
         long_task = "audit long prompt\n" + ("0123456789abcdef" * 2000)
         task_file = root / "long-task.md"
-        task_file.write_text(long_task, encoding="utf-8")
+        task_file.write_text(compliant_task(long_task), encoding="utf-8")
         result = subprocess.run(
             [
                 sys.executable,

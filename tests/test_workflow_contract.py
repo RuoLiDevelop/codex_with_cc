@@ -8,6 +8,8 @@ import sys
 import tempfile
 from pathlib import Path
 
+from tests.task_helpers import compliant_task
+
 
 REPO = Path(__file__).resolve().parents[1]
 SCRIPTS = REPO / "skills" / "codex-with-cc" / "scripts"
@@ -131,7 +133,7 @@ def test_delegate_dry_run_writes_workflow_artifacts_and_verifies_them() -> None:
             "PYTHONDONTWRITEBYTECODE": "1",
         }
         task_file = root / "workflow-dry-run-task.md"
-        task_file.write_text("workflow dry run task", encoding="utf-8")
+        task_file.write_text(compliant_task("workflow dry run task"), encoding="utf-8")
         result = run_python(
             DELEGATE,
             "-TaskFile",

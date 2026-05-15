@@ -21,6 +21,7 @@ from .paths import repo_root, workflow_relative_path, workflow_root
 from .prompts import build_prompt
 from .reports import build_report_repair_prompt, get_output_resolution, path_has_required_report_headings
 from .sessions import SessionLease, acquire_session_lease, effective_session_key, normalize_delegate_list, release_session_lease, reset_session_lease_for_fresh_session, safe_session_key, task_fingerprint
+from .task_contract import validate_task_file_contract
 from .workflow import normalize_role, safe_task_id, update_workflow_record, workflow_path
 
 
@@ -82,6 +83,70 @@ DONE
 Risks Or Follow-ups
 - Inspect the generated prompt before running without -DryRun if needed: {prompt_path}
 """
+
+
+@dataclasses.dataclass(frozen=True)
+class DelegateArtifactPaths:
+    artifact_root: Path
+    output_path: Path
+    status_path: Path
+    config_path: Path
+    prompt_path: Path
+    raw_stream_path: Path
+    trace_path: Path
+    workflow_file_path: Path
+    lock_path: Path
+    run_id: str
+
+
+def build_artifact_paths(ns: argparse.Namespace, root: Path, workflow_id: str) -> DelegateArtifactPaths:
+    artifact_root = Path(ns.artifact_root).resolve() if ns.artifact_root else (root / ".codex" / "codex_with_cc" / "claude-delegate").resolve()
+    artifact_root.mkdir(parents=True, exist_ok=True)
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")[:-3]
+    run_id = f"{timestamp}_{uuid.uuid4().hex[:8]}"
+    output_path = Path(ns.output_path).resolve() if ns.output_path else (artifact_root / f"claude_{run_id}.md").resolve()
+    return DelegateArtifactPaths(
+        artifact_root=artifact_root,
+        output_path=output_path,
+        status_path=artifact_root / f"status_{run_id}.json",
+        config_path=artifact_root / f"config_{run_id}.json",
+        prompt_path=artifact_root / f"prompt_{run_id}.md",
+        raw_stream_path=artifact_root / f"stream_{run_id}.jsonl",
+        trace_path=artifact_root / f"trace_{run_id}.log",
+        workflow_file_path=workflow_path(artifact_root, workflow_id),
+        lock_path=artifact_root / "delegate.lock",
+        run_id=run_id,
+    )
+
+
+def complete_dry_run(paths: DelegateArtifactPaths, status: dict[str, Any], config: dict[str, Any], lease: SessionLease, role: str) -> None:
+    write_text(paths.output_path, dry_run_report(paths.run_id, paths.prompt_path, role))
+    write_text(paths.raw_stream_path, "")
+    write_text(paths.trace_path, f"[dry-run] Claude Code was not invoked for run {paths.run_id}\n")
+    status["attemptCount"] = 1
+    status["retryCount"] = 0
+    status["attempts"] = [
+        {
+            "attempt": 1,
+            "sessionId": lease.session_id,
+            "resume": lease.resume,
+            "retryReason": None,
+            "exitCode": 0,
+            "sawAssistantText": False,
+            "sawResultSuccess": True,
+            "capturedFinalResult": True,
+            "dryRun": True,
+        }
+    ]
+    status["status"] = "completed"
+    status["exitCode"] = 0
+    status["outputBytes"] = paths.output_path.stat().st_size
+    config["initialSessionId"] = lease.session_id
+    config["initialResume"] = lease.resume
+    config["attemptCount"] = 1
+    config["retryCount"] = 0
+    write_json(paths.config_path, config)
+    write_json(paths.status_path, status)
 
 
 
@@ -152,6 +217,7 @@ def run_delegate(ns: argparse.Namespace) -> int:
     task_text = read_text(task_file)
     if not task_text.strip():
         raise DelegateError("Task text cannot be empty.")
+    validate_task_file_contract(task_text)
     if str(ns.role).lower() == "reviewer" and (not ns.review_for_task_id or not ns.review_kind):
         raise DelegateError("Reviewer runs must pass -ReviewForTaskId and -ReviewKind.")
 
@@ -161,34 +227,30 @@ def run_delegate(ns: argparse.Namespace) -> int:
     if not entry_path.exists():
         raise DelegateError(f"Missing workflow entry document: {entry_path}")
 
-    artifact_root = Path(ns.artifact_root).resolve() if ns.artifact_root else (root / ".codex" / "codex_with_cc" / "claude-delegate").resolve()
-    artifact_root.mkdir(parents=True, exist_ok=True)
-    output_path = Path(ns.output_path).resolve() if ns.output_path else (artifact_root / f"claude_PLACEHOLDER.md").resolve()
-
     scope = normalize_delegate_list(ns.scope)
     tests = normalize_delegate_list(ns.tests)
     depends_on = [safe_task_id(item) for item in normalize_delegate_list(ns.depends_on)]
     key = effective_session_key(ns.session_key)
     safe_key = safe_session_key(key)
+    workflow_id = ns.workflow_id.strip()
+    paths = build_artifact_paths(ns, root, workflow_id)
+    artifact_root = paths.artifact_root
+    output_path = paths.output_path
+    status_path = paths.status_path
+    config_path = paths.config_path
+    prompt_path = paths.prompt_path
+    raw_stream_path = paths.raw_stream_path
+    trace_path = paths.trace_path
+    workflow_file_path = paths.workflow_file_path
+    lock_path = paths.lock_path
+    run_id = paths.run_id
     session_pools_root = artifact_root / "session-pools"
     session_state_path = session_pools_root / f"{safe_key}.json"
     session_state_lock_path = session_pools_root / f"{safe_key}.lock"
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")[:-3]
-    run_id = f"{timestamp}_{uuid.uuid4().hex[:8]}"
-    workflow_id = ns.workflow_id.strip()
     task_id = safe_task_id(ns.task_id)
     role = normalize_role(ns.role)
     mode = role
     effective_name = ns.name if ns.name else f"{ns.name_prefix}-{run_id}"
-    if output_path.name == "claude_PLACEHOLDER.md":
-        output_path = artifact_root / f"claude_{run_id}.md"
-    status_path = artifact_root / f"status_{run_id}.json"
-    config_path = artifact_root / f"config_{run_id}.json"
-    prompt_path = artifact_root / f"prompt_{run_id}.md"
-    raw_stream_path = artifact_root / f"stream_{run_id}.jsonl"
-    trace_path = artifact_root / f"trace_{run_id}.log"
-    workflow_file_path = workflow_path(artifact_root, workflow_id)
-    lock_path = artifact_root / "delegate.lock"
     fingerprint = task_fingerprint(task_text, scope, tests, mode)
 
     for path in (output_path, status_path, config_path, raw_stream_path, trace_path):
@@ -347,33 +409,7 @@ def run_delegate(ns: argparse.Namespace) -> int:
 
         if ns.dry_run:
             print("Dry run enabled; Claude Code was not invoked.")
-            write_text(output_path, dry_run_report(run_id, prompt_path, role))
-            write_text(raw_stream_path, "")
-            write_text(trace_path, f"[dry-run] Claude Code was not invoked for run {run_id}\n")
-            status["attemptCount"] = 1
-            status["retryCount"] = 0
-            status["attempts"] = [
-                {
-                    "attempt": 1,
-                    "sessionId": lease.session_id,
-                    "resume": lease.resume,
-                    "retryReason": None,
-                    "exitCode": 0,
-                    "sawAssistantText": False,
-                    "sawResultSuccess": True,
-                    "capturedFinalResult": True,
-                    "dryRun": True,
-                }
-            ]
-            status["status"] = "completed"
-            status["exitCode"] = 0
-            status["outputBytes"] = output_path.stat().st_size
-            config["initialSessionId"] = lease.session_id
-            config["initialResume"] = lease.resume
-            config["attemptCount"] = 1
-            config["retryCount"] = 0
-            write_json(config_path, config)
-            write_json(status_path, status)
+            complete_dry_run(paths, status, config, lease, role)
             return 0
 
         claude = shutil.which("claude")

@@ -98,15 +98,26 @@ def run_real_chain_validation(ns: argparse.Namespace) -> int:
 - Worker entry script: {delegate_entry}
 - Required worker arguments: {required_args}
 
-Allowed scope:
-{scope}
-
-Verification command to run after this task completes:
-{verify_command}
-
+Goal
 {task_body}
 
-要求：
+Allowed Scope
+{scope}
+
+Forbidden Actions
+- Do not edit files outside the listed scope.
+- Do not invoke nested delegate runs.
+- Do not treat pending validation tasks as permission to broaden this assignment.
+
+Acceptance Criteria
+- Complete only this validation task.
+- Report the exact verification evidence and any residual risk.
+- Preserve the workflow/task/run metadata in the final report.
+
+Verification
+{verify_command}
+
+Report Requirements
 - 输出必须包含 Status / Role / Summary / Changed Files / Verification / Findings / Final Result / Risks Or Follow-ups。
 - Status 和 Final Result 必须使用同一个状态值：DONE、DONE_WITH_CONCERNS、NEEDS_CONTEXT、BLOCKED 或 FAIL。
 """

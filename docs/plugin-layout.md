@@ -6,14 +6,15 @@ This repository ships as a Codex plugin, with marketplace-first distribution thr
 
 - `.codex-plugin/plugin.json`: Codex plugin manifest and UI metadata.
 - `skills/`: Shared plugin content root for the Codex plugin.
-- `skills/codex-with-cc/`: The real workflow implementation, runtime scripts, and contract docs.
+- `skills/codex-with-cc/`: The real workflow implementation, runtime scripts, `contract.json`, and contract docs.
 
 ## Why the runtime stays under `skills/codex-with-cc/`
 
-The delegated runtime and contract tests assume that `skills/codex-with-cc/` is the canonical workflow root. Keeping that directory stable avoids breaking:
+The delegated runtime, hook gate, and contract tests assume that `skills/codex-with-cc/` is the canonical workflow root. Keeping that directory stable avoids breaking:
 
 - platform-specific packaging of `windows_scripts/` and `macos_scripts/`
 - verification scripts and path-sensitive tests
+- the shared `contract.json` read by both Python runtime code and the platform hook
 
 ## Installation paths
 

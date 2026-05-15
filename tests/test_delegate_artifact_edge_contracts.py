@@ -7,6 +7,8 @@ import sys
 import tempfile
 from pathlib import Path
 
+from tests.task_helpers import compliant_task
+
 
 REPO = Path(__file__).resolve().parents[1]
 SCRIPTS = REPO / "skills" / "codex-with-cc" / "scripts"
@@ -125,7 +127,7 @@ def make_file_report_fake_claude_bin(root: Path) -> Path:
 
 def write_task(root: Path, name: str, text: str) -> Path:
     task_file = root / f"{name}.md"
-    task_file.write_text(text, encoding="utf-8")
+    task_file.write_text(compliant_task(text), encoding="utf-8")
     return task_file
 
 

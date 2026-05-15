@@ -63,7 +63,31 @@ def make_fake_claude_bin(temp_root: Path, body: str) -> Path:
 
 def write_task_file(root: Path, task_id: str, text: str) -> Path:
     task_file = root / f"{task_id}.md"
-    write_text(task_file, text)
+    write_text(
+        task_file,
+        f"""# Delegate Runtime Self-Test Task
+
+Goal
+{text}
+
+Allowed Scope
+- skills/codex-with-cc
+
+Forbidden Actions
+- Do not edit README.md.
+- Do not invoke nested delegate runs.
+
+Acceptance Criteria
+- The runtime behavior under test is exercised.
+- The worker report contains concrete verification evidence.
+
+Verification
+- self-test command executed
+
+Report Requirements
+- Status / Role / Summary / Changed Files / Verification / Findings / Final Result / Risks Or Follow-ups
+""",
+    )
     return task_file
 
 

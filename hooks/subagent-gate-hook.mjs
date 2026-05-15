@@ -4,27 +4,22 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-const REQUIRED_MODEL = "gpt-5.3-codex";
-const REQUIRED_EFFORT = "medium";
-const ALLOWED_ROLES = new Set(["planner", "implementer", "researcher", "reviewer", "final-verifier"]);
-
-const TRIGGER_PATTERNS = [
-  /child[- ]?agent/i,
-  /sub[- ]?agent/i,
-  /child[- ]?thread/i,
-  /sub[- ]?thread/i,
-  /delegat(?:e|ion|ing)/i,
-  /worker[- ]?execution/i,
-  /子代理|子线程|多代理|委派|派工|执行层/,
-];
-
-const SPAWN_TOOL_NAMES = new Set([
-  "spawn_agent",
-  "task",
-  "subagent",
-  "agent",
-  "worker",
-]);
+const FALLBACK_CONTRACT = {
+  childThread: { markerName: "CODEX_CLAUDE_CHILD_THREAD", markerValue: "1" },
+  spawn: { model: "gpt-5.3-codex", reasoningEffort: "medium", forkContext: false },
+  workerRoles: ["planner", "implementer", "researcher", "reviewer", "final-verifier"],
+  triggerPatterns: [
+    "child[- ]?agent",
+    "sub[- ]?agent",
+    "child[- ]?thread",
+    "sub[- ]?thread",
+    "delegat(?:e|ion|ing)",
+    "worker[- ]?execution",
+    "子代理|子线程|多代理|委派|派工|执行层",
+  ],
+  spawnToolNames: ["spawn_agent", "task", "subagent", "agent", "worker"],
+  delegateEntrypointPattern: "delegate_to_claude(?:\\.(?:ps1|sh|cmd|bat))?",
+};
 
 const FALLBACK_CONTEXT = [
   "codex-with-cc platform subagent gate:",
@@ -55,6 +50,41 @@ function readOptionalText(filePath) {
     return "";
   }
 }
+
+function mergeContract(contract) {
+  return {
+    ...FALLBACK_CONTRACT,
+    ...contract,
+    childThread: { ...FALLBACK_CONTRACT.childThread, ...(contract.childThread || {}) },
+    spawn: { ...FALLBACK_CONTRACT.spawn, ...(contract.spawn || {}) },
+    workerRoles: Array.isArray(contract.workerRoles) ? contract.workerRoles : FALLBACK_CONTRACT.workerRoles,
+    triggerPatterns: Array.isArray(contract.triggerPatterns) ? contract.triggerPatterns : FALLBACK_CONTRACT.triggerPatterns,
+    spawnToolNames: Array.isArray(contract.spawnToolNames) ? contract.spawnToolNames : FALLBACK_CONTRACT.spawnToolNames,
+  };
+}
+
+function readContract() {
+  const raw = readOptionalText(path.join(pluginRoot(), "skills", "codex-with-cc", "contract.json"));
+  if (!raw.trim()) {
+    return FALLBACK_CONTRACT;
+  }
+  try {
+    return mergeContract(JSON.parse(raw));
+  } catch {
+    return FALLBACK_CONTRACT;
+  }
+}
+
+const CONTRACT = readContract();
+const REQUIRED_MODEL = CONTRACT.spawn.model;
+const REQUIRED_EFFORT = CONTRACT.spawn.reasoningEffort;
+const REQUIRED_FORK_CONTEXT = CONTRACT.spawn.forkContext;
+const CHILD_MARKER_NAME = CONTRACT.childThread.markerName;
+const CHILD_MARKER_VALUE = CONTRACT.childThread.markerValue;
+const ALLOWED_ROLES = new Set(CONTRACT.workerRoles.map((role) => String(role).toLowerCase()));
+const TRIGGER_PATTERNS = CONTRACT.triggerPatterns.map((pattern) => new RegExp(pattern, "i"));
+const SPAWN_TOOL_NAMES = new Set(CONTRACT.spawnToolNames.map((name) => String(name).toLowerCase()));
+const DELEGATE_ENTRYPOINT_PATTERN = new RegExp(CONTRACT.delegateEntrypointPattern, "i");
 
 function bootstrapContext() {
   const root = pluginRoot();
@@ -176,11 +206,12 @@ function isFalse(value) {
 }
 
 function hasChildMarker(serialized) {
-  return /CODEX_CLAUDE_CHILD_THREAD\s*(?:=|:)\s*["']?1["']?/i.test(serialized);
+  const pattern = new RegExp(`${CHILD_MARKER_NAME}\\s*(?:=|:)\\s*["']?${CHILD_MARKER_VALUE}["']?`, "i");
+  return pattern.test(serialized);
 }
 
 function hasDelegateEntrypoint(serialized) {
-  return /delegate_to_claude(?:\.(?:ps1|sh|cmd|bat))?/i.test(serialized);
+  return DELEGATE_ENTRYPOINT_PATTERN.test(serialized);
 }
 
 function hasTaskFile(serialized) {
@@ -250,7 +281,7 @@ function validateWorkflowPayload(payload) {
   if (prop(payload, "reasoning_effort", "reasoningEffort") !== REQUIRED_EFFORT) {
     problems.push(`reasoning_effort must be ${REQUIRED_EFFORT}`);
   }
-  if (!isFalse(prop(payload, "fork_context", "forkContext"))) {
+  if (prop(payload, "fork_context", "forkContext") !== REQUIRED_FORK_CONTEXT) {
     problems.push("fork_context: false is required");
   }
   if (hasDirectClaudeCommand(serialized)) {

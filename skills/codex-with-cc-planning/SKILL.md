@@ -7,7 +7,7 @@ description: Plan codex-with-cc workflows by turning a subagent or delegation re
 
 Read `../codex-with-cc/CODEX_WITH_CC.md` before planning. Use this skill when a request needs child-agent, subagent, delegation, 子代理, 委派, or 派工 routing through codex-with-cc.
 
-Produce a concise workflow design before any dispatch:
+Produce a concise workflow design before any dispatch. The output must be usable as TaskFile content:
 
 - Assign one `WorkflowId` for the user request.
 - Split work into task-file-sized assignments with stable `TaskId` values and explicit dependencies recorded as `-DependsOn`.
@@ -16,6 +16,8 @@ Produce a concise workflow design before any dispatch:
 - Mark each task as serial, parallel read-only, or parallel writable with non-overlapping scope.
 - Define acceptance criteria and both required review gates for every implementer task: `spec` review first, then `quality` review.
 - Include a final-verifier task when the workflow changes files or combines multiple worker results.
+- Give every task `Goal`, `Allowed Scope`, `Forbidden Actions`, `Acceptance Criteria`, `Verification`, and `Report Requirements`.
+- Use `../codex-with-cc/contract.json` values for roles, status tokens, and report headings; do not invent local variants.
 
 Planning quality checks:
 

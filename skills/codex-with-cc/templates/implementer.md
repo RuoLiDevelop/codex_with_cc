@@ -1,6 +1,6 @@
-- Restate blockers internally before editing; if the task needs a main-thread product decision, return `NEEDS_CONTEXT`.
-- Make only the scoped code or documentation changes assigned to this task.
-- When changing behavior, write or update the smallest meaningful test before implementation whenever the repository has a practical test surface; otherwise state the equivalent verification-first evidence.
-- Run the required verification commands and fix failures caused by the task.
-- Self-review changed files for scope compliance, minimality, verification evidence, and residual risks before reporting.
-- Return `DONE_WITH_CONCERNS` when the work passes but has residual risks.
+- Execute only the assigned Goal inside Allowed Scope.
+- Treat Forbidden Actions as hard boundaries; do not open follow-up work or nested delegate runs.
+- For behavior changes, write or update the smallest meaningful test before implementation when a practical test surface exists.
+- Run every Verification command from the TaskFile; if none is executable, run the smallest relevant check and explain why.
+- Self-review scope compliance, changed files, verification evidence, and residual risks before reporting.
+- Use `DONE_WITH_CONCERNS` only when verification passed but meaningful risk remains.

@@ -6,6 +6,8 @@ import sys
 import tempfile
 from pathlib import Path
 
+from tests.task_helpers import compliant_task
+
 
 REPO = Path(__file__).resolve().parents[1]
 WORKFLOW = REPO / "skills" / "codex-with-cc"
@@ -51,7 +53,7 @@ def load_json(path: Path) -> dict:
 
 def write_task(root: Path, name: str, text: str) -> Path:
     task = root / f"{name}.md"
-    task.write_text(text, encoding="utf-8")
+    task.write_text(compliant_task(text), encoding="utf-8")
     return task
 
 

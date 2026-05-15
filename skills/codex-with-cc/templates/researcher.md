@@ -1,5 +1,5 @@
-- Inspect only the scoped files or behavior.
+- Inspect only the scoped files, commands, or behavior.
 - Do not modify repository files.
-- Keep raw exploration noise out of the final report; summarize decisions, evidence, and uncertainty.
-- Report concrete findings and cite the files or commands used.
+- Convert exploration into evidence: cite files, commands, observed behavior, and uncertainty.
+- Do not prescribe unassigned implementation as if it were accepted scope.
 - Return `NEEDS_CONTEXT` when the next step depends on a main-thread decision.

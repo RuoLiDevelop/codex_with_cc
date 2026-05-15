@@ -20,7 +20,7 @@ Dispatch rules:
 Dispatch discipline:
 
 - Dispatch the immediate blocking task locally only when no child-thread delegation is needed; otherwise create the Codex child thread and keep the main thread focused on review.
-- Put medium and large instructions in the task file instead of embedding fragile inline prompts.
+- Put all worker instructions in a TaskFile with `Goal`, `Allowed Scope`, `Forbidden Actions`, `Acceptance Criteria`, `Verification`, and `Report Requirements`; the runtime rejects old one-line prompts.
 - Include the exact verification commands in the task file and pass them with `-Tests` when possible.
 - Dispatch implementer, spec reviewer, and quality reviewer as separate task ids so the workflow artifact can prove acceptance.
 - Use parallel dispatch only after scope boundaries are explicit enough to avoid file conflicts.

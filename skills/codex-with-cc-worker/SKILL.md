@@ -7,15 +7,14 @@ description: Prepare codex-with-cc worker task files and report requirements for
 
 Read `../codex-with-cc/CODEX_WITH_CC.md` before preparing a worker task.
 
-Worker task files must state:
+Worker task files must use these exact sections:
 
-- The exact assignment and intended role.
-- The WorkflowId, TaskId, SessionKey, and any review target metadata.
-- Allowed scope and files that may be changed or inspected.
-- Explicit out-of-scope files, behaviors, and follow-up work the worker must not execute.
-- Required verification commands.
-- Acceptance criteria the worker should self-check before reporting.
-- The report headings: Status, Role, Summary, Changed Files, Verification, Findings, Final Result, Risks Or Follow-ups.
+- `Goal`: the exact assignment and intended role.
+- `Allowed Scope`: files or behavior that may be changed or inspected.
+- `Forbidden Actions`: out-of-scope files, behaviors, nested delegation, and follow-up work the worker must not execute.
+- `Acceptance Criteria`: self-checks before reporting.
+- `Verification`: exact commands the worker must run.
+- `Report Requirements`: Status, Role, Summary, Changed Files, Verification, Findings, Final Result, Risks Or Follow-ups.
 
 Worker behavior:
 
